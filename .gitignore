@@ -1,0 +1,7 @@
+venv
+*.mat
+*.docx
+logs
+*.csv
+*.png
+.idea

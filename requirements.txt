@@ -1,0 +1,8 @@
+torch
+skorch
+braindecode
+matplotlib
+numpy
+scipy
+pandas
+sklearn
