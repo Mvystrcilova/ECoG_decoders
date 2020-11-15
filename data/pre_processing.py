@@ -14,11 +14,17 @@ class Data:
         self.data = read_mat_file(mat_file)
         self.datasets = self.create_datasets()
         self.train_set, self.valid_set, self.test_set = self.split_data(num_of_folds)
-        self.in_channels = self.train_set.X[0].shape[0]
-        self.n_classes = self.train_set.y[0].shape[2]
+        self.in_channels = self.train_set.X[0].shape[1]
+        self.n_classes = len(self.train_set.y[0].shape)
 
     def create_datasets(self):
-        return [SignalAndTarget([l[0].ieeg.astype(np.float32)], [l[0].traj.astype()]) for l in self.data.D]
+        sessions = self.data.D
+        Xs = [session[0].ieeg[:] for session in sessions]
+        ys = [session[0].traj for session in sessions]
+        Xs = np.transpose(np.array(Xs))
+
+        return [SignalAndTarget([X.astype(np.float32)], [y.astype(np.float32)])
+                for X, y in zip(Xs, ys)]
 
     def split_data(self, num_of_folds):
         indices = np.arange(len(self.datasets))[-num_of_folds:]
@@ -26,9 +32,9 @@ class Data:
         valid_inds = indices[-2]
         train_inds = indices[:-1]
 
-        train_set = concatenate_sets([self.data[i] for i in train_inds])
-        valid_set = self.data[valid_inds] # dummy variable, could be set to None
-        test_set = self.data[test_inds]
+        train_set = concatenate_sets([self.datasets[i] for i in train_inds])
+        valid_set = self.datasets[valid_inds] # dummy variable, could be set to None
+        test_set = self.datasets[test_inds]
         return train_set, valid_set, test_set
 
 

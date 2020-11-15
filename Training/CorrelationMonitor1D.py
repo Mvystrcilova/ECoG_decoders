@@ -2,7 +2,7 @@ from braindecode.experiments.monitors import compute_preds_per_trial_from_crops
 import numpy as np
 
 
-class CorrelationMonitor1d(object):
+class CorrelationMonitor1D(object):
     """
     Compute correlation between 1d predictions
 
