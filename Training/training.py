@@ -9,7 +9,7 @@ from data.pre_processing import Data
 from global_config import home
 import numpy as np
 from models.Model import Model
-from torch.utils.tensorboard import SummaryWriter, FileWriter
+import torch
 from Training.CorrelationMonitor1D import CorrelationMonitor1D
 
 
@@ -28,7 +28,7 @@ def test_input(input_channels, model):
 
 if __name__ == '__main__':
     input_time_length = 1200
-    max_train_epochs = 100
+    max_train_epochs = 20
     batch_size = 32
 
     data = Data(home + '/previous_work/ALL_11_FR1_day1_absVel.mat', num_of_folds=6)
@@ -57,4 +57,6 @@ if __name__ == '__main__':
                      iterator=iterator, cuda=False, loggers=[writer])
     print('running experiment')
     exp.run()
+
+    torch.save(model.model.state_dict(), home +'/models/saved_models/playing_experiment_1')
 
