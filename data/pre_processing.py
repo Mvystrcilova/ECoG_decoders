@@ -14,14 +14,13 @@ class Data:
         self.data = read_mat_file(mat_file)
         self.datasets = self.create_datasets()
         self.train_set, self.valid_set, self.test_set = self.split_data(num_of_folds)
-        self.in_channels = self.train_set.X[0].shape[1]
+        self.in_channels = self.train_set.X[0].shape[0]
         self.n_classes = len(self.train_set.y[0].shape)
 
     def create_datasets(self):
         sessions = self.data.D
-        Xs = [session[0].ieeg[:] for session in sessions]
+        Xs = [np.transpose(session[0].ieeg[:]) for session in sessions]
         ys = [session[0].traj for session in sessions]
-        Xs = np.transpose(np.array(Xs))
 
         return [SignalAndTarget([X.astype(np.float32)], [y.astype(np.float32)])
                 for X, y in zip(Xs, ys)]

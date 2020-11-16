@@ -3,6 +3,7 @@ from braindecode.experiments.monitors import RuntimeMonitor, LossMonitor
 from braindecode.experiments.stopcriteria import MaxEpochs
 from braindecode.datautil.iterators import get_balanced_batches, CropsFromTrialsIterator
 from braindecode.torch_ext.util import np_to_var
+from braindecode.experiments.loggers import TensorboardWriter
 
 from data.pre_processing import Data
 from global_config import home
@@ -13,7 +14,7 @@ from Training.CorrelationMonitor1D import CorrelationMonitor1D
 
 
 def get_writer():
-    writer = FileWriter(home + '/logs/playing_experiment_1')
+    writer = TensorboardWriter(home + '/logs/playing_experiment_1')
     return writer
 
 
@@ -50,9 +51,10 @@ if __name__ == '__main__':
     stop_criterion = MaxEpochs(max_train_epochs)
 
     exp = Experiment(model.model, train_set=data.train_set, valid_set=data.valid_set, test_set=data.test_set,
-                      loss_function=model.loss_function, optimizer=model.optimizer, loggers=[writer],
+                      loss_function=model.loss_function, optimizer=model.optimizer,
                      model_constraint=None, monitors=monitors, stop_criterion=stop_criterion,
                      remember_best_column='train_loss', run_after_early_stop=False, batch_modifier=None,
-                     iterator=iterator, cuda=False)
+                     iterator=iterator, cuda=False, loggers=[writer])
+    print('running experiment')
     exp.run()
 
