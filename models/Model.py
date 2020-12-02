@@ -1,12 +1,22 @@
 from braindecode.models.deep4 import Deep4Net
 from torch import nn, optim
-from braindecode.torch_ext.modules import Expression
 from braindecode.models.util import to_dense_prediction_model
 from torch.nn import functional
+
 
 def squeeze_out(x):
     assert x.size()[1] == 1 and x.size()[3] == 1
     return x[:, 0, :, 0]
+
+
+### From braindecode library 0.4.85
+class Expression(nn.Module):
+    def __init__(self, expression_fn):
+        super(Expression, self).__init__()
+        self.expression_fn = expression_fn
+
+    def forward(self, *x):
+        return self.expression_fn(*x)
 
 
 class Model:
@@ -16,20 +26,22 @@ class Model:
         self.input_time_length = input_time_length
         self.final_conv_lenght = final_conv_length
         self.model = Deep4Net(in_chans=self.input_channels, n_classes=self.n_classes,
-                              input_time_length=self.input_time_length, final_conv_length=self.final_conv_lenght,
-                              stride_before_pool=stride_before_pool).create_network()
+                              input_window_samples=input_time_length,
+                              final_conv_length=self.final_conv_lenght,
+                              stride_before_pool=stride_before_pool, ).train()
         self.regressed = False
-        self.optimizer = optim.Adam(self.model.parameters())
-        self.loss_function = functional.mse_loss
+        self.optimizer = optim.Adam
+        self.loss_function = nn.MSELoss
 
     def make_regressor(self):
         if not self.regressed:
             new_model = nn.Sequential()
             for name, module in self.model.named_children():
-                if name == 'softmax':
+                print(name)
+                if 'softmax' in name:
                     break
                 new_model.add_module(name, module)
-            new_model.add_module('squeeze', Expression(squeeze_out))
+            new_model.add_module('squeeze_out', Expression(squeeze_out))
             self.model = new_model
             to_dense_prediction_model(self.model)
             self.regressed = True
@@ -42,13 +54,3 @@ class Model:
             else:
                 activations[name] = [x]
         return activations
-
-
-
-
-
-
-
-
-
-
