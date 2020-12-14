@@ -1,6 +1,7 @@
 import numpy as np
 from skorch.callbacks import Callback
-
+import torch
+from global_config import home
 
 class CorrelationMonitor1D(Callback):
     """
@@ -12,10 +13,11 @@ class CorrelationMonitor1D(Callback):
         Temporal length of one input to the model.
     """
 
-    def __init__(self, input_time_length=None, setname=None):
+    def __init__(self, input_time_length=None, setname=None, split=0):
         self.input_time_length = input_time_length
         self.setname = setname
         self.step_number = 0
+        self.split = split
 
     def monitor_batch(self, msg):
         print(msg)
@@ -88,13 +90,25 @@ class CorrelationMonitor1D(Callback):
 
         train_corr = self.calculate_correlation(train_preds, train_y, train_X)
         valid_corr = self.calculate_correlation(valid_preds, valid_y, valid_X)
-        names = ['train correlation', 'validation correlation']
-
-        for name, value in zip(names, [train_corr, valid_corr]):
-            writer.add_scalar(name, value, self.step_number)
+        names = ['train_correlation', 'validation_correlation']
+        if 'test' in kwargs.keys():
+            writer.add_scalar('test_correlation', train_corr, 0)
             writer.flush()
-        print(f'train correlation: {train_corr}')
-        print(f'validation correlation: {valid_corr}')
+            print(f'test_correlation: {train_corr}')
+        else:
+            for name, value in zip(names, [train_corr, valid_corr]):
+                writer.add_scalar(name, value, self.step_number)
+                writer.flush()
+                net.history.record(name, value)
+            if net.max_correlation < valid_corr:
+                net.max_correlation = valid_corr
+                net.history.record('validation_correlation_best', True)
+                torch.save(net.module, home + f'/models/saved_models/models_2/best_model_split_{self.split}')
+            else:
+                net.history.record('validation_correlation_best', False)
+
+            # print(f'train correlation: {train_corr}')
+            # print(f'validation correlation: {valid_corr}')
         self.step_number += 1
 
     # def on_batch_end(self, net, **kwargs):

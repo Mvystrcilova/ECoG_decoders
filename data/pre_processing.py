@@ -15,7 +15,6 @@ class MyDataset:
         self.y = y
 
 
-
 class Data:
     def __init__(self, mat_file, num_of_folds):
         self.data = read_mat_file(mat_file)
@@ -48,6 +47,10 @@ class Data:
 
     def cv_split(self, X, y):
         length = len(X.X)
+        if self.num_of_folds == -1:
+            train_set = Dataset(X.X[:], y[:])
+            return train_set, self.test_set
+
         fold_length = length / self.num_of_folds
 
         if self.fold_number == 0:
@@ -61,12 +64,13 @@ class Data:
             validation_set = Dataset(X.X[0:int(fold_length)], y[0:int(fold_length)])
 
         else:
-            train_set = Dataset(np.concat([X.X[int(fold_length) * (self.fold_number - 1):int(fold_length) * self.fold_number],
+            train_set = Dataset(np.concatenate([X.X[int(fold_length) * (self.fold_number - 1):int(fold_length) * self.fold_number],
                                 X.X[int(fold_length) * (self.fold_number + 1):]]),
-                                np.concat([y[int(fold_length) * (self.fold_number - 1):int(fold_length) * self.fold_number],
+                                np.concatenate([y[int(fold_length) * (self.fold_number - 1):int(fold_length) * self.fold_number],
                                 y[int(fold_length) * (self.fold_number + 1):]]
                                 ))
-            validation_set = Dataset(X.X[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)])
+            validation_set = Dataset(X.X[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)],
+                                     y[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)])
         self.fold_number += 1
         return train_set, validation_set
 

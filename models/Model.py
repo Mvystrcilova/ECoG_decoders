@@ -2,6 +2,37 @@ from braindecode.models.deep4 import Deep4Net
 from torch import nn, optim
 from braindecode.models.util import to_dense_prediction_model
 from torch.nn import functional
+import logging, sys, torch
+from global_config import home
+log = logging.getLogger()
+log.setLevel('DEBUG')
+
+logging.basicConfig(format='%(asctime)s %(levelname)s : %(message)s',
+                    level=logging.DEBUG, stream=sys.stdout)
+
+
+def load_model(model_file):
+    log.info("Loading CNN model...")
+    model = torch.load(home + model_file)
+    # fix for new pytorch
+    for m in model.modules():
+        if m.__class__.__name__ == 'Conv2d':
+            m.padding_mode = 'zeros'
+    log.info("Loading done.")
+    model.double()
+    return model
+
+
+def create_new_model(model, module_name):
+    new_model = nn.Sequential()
+    found_selected = False
+    for name, child in model.named_children():
+        new_model.add_module(name, child)
+        if name == module_name:
+            found_selected = True
+            break
+    assert found_selected
+    return new_model
 
 
 def squeeze_out(x):
