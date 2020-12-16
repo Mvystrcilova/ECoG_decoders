@@ -1,7 +1,7 @@
 import matplotlib
 from braindecode.models.util import get_output_shape
 from braindecode.util import np_to_var, var_to_np
-from interpretation.interpretation import plot_gradients, reshape, calculate_phase_and_amps, get_corr_coef
+from interpretation import plot_gradients, reshape_Xs, calculate_phase_and_amps, get_corr_coef
 from data.pre_processing import Data
 from models.Model import load_model
 from global_config import home, input_time_length
@@ -25,26 +25,27 @@ seaborn.set_style('darkgrid')
 def load_data(data_file, num_of_folds=5):
     print("file = {:s}".format(data_file))
     data = Data(home + data_file, num_of_folds=num_of_folds)
-    data.cut_input(input_time_length, n_preds_per_input, False)
+    data.cut_input(input_time_length, n_preds_per_input[1], False)
     return data
 
 
 if __name__ == '__main__':
     select_modules = ['conv_spat', 'conv_2', 'conv_3', 'conv_4', 'conv_classifier']
+    model = load_model('/models/saved_models/best_model_1')
+    n_preds_per_input = get_output_shape(model, 85, 1200)
     data = load_data('/previous_work/ALL_11_FR1_day1_absVel.mat', -1)
-    model = load_model('models/saved_models/best_model_1')
+
     for setname, dataset in (("Test", data.test_set), ("Train", data.train_set)):
         corrcoef = get_corr_coef(dataset, model)
         print(setname, 'correlation_coeff:', corrcoef)
 
         # Get corretly sized windows for gradients
         input_time_length = 1200
-        n_preds_per_input = get_output_shape(model, 85, 1200)
 
         wSize = 2 * n_preds_per_input[1]  # smallest possible=685 (empirically found)
-        # wSize = 682
+        wSize = 439
         X_reshaped = np.asarray(dataset.X)
-        X_reshaped = reshape(wSize, X_reshaped, setname, corrcoef)
+        X_reshaped = reshape_Xs(wSize, X_reshaped)
         for module_name in select_modules:
             print("Module {:s}...".format(module_name))
             ## Create new model
@@ -100,7 +101,7 @@ if __name__ == '__main__':
             meaned_amp_grads = np.mean(all_amp_grads, axis=1)
             meaned_phase_grads = np.mean(all_phases_grads, axis=1)
 
-            if module_name == 'conv_classifier':
+            if module_name == 'conv_3':
                 plot_gradients(X_reshaped, np.mean(meaned_amp_grads, axis=(0, 1)), corrcoef, '', setname=setname,
                                wsize=wSize)
                 plot_gradients(X_reshaped, np.mean(np.abs(meaned_amp_grads), axis=(0, 1)), corrcoef=corrcoef,

@@ -11,12 +11,12 @@ from models.Model import load_model, create_new_model
 import sys
 import matplotlib
 import seaborn
-from global_config import home, input_time_length
+from global_config import home, input_time_length, output_dir
 import torch
 from matplotlib import pyplot as plt
 from matplotlib import cm
 from data.pre_processing import Data
-
+from torchsummary import summary
 
 matplotlib.rcParams['figure.figsize'] = (12.0, 1.0)
 matplotlib.rcParams['font.size'] = 14
@@ -37,6 +37,9 @@ def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef):
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Gradient')
     plt.title("{:s} Amplitude Individual Crop Gradients (Corr {:.2f}%)".format(setname, corrcoef * 100))
+    plt.tight_layout()
+    plt.savefig(f'{output_dir}/graphs/train/individual_gradients_80_90.png')
+
     plt.show()
     plt.figure(figsize=(18, 5))
     plt.plot(np.fft.rfftfreq(batch_X.shape[2], 1 / 250.0), np.mean(amp_grads_per_crop, axis=(1)).T, lw=0.25,
@@ -47,6 +50,8 @@ def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef):
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Gradient')
     plt.title("{:s} Amplitude Gradients (Corr {:.2f}%)".format(setname, corrcoef * 100))
+    plt.tight_layout()
+    plt.savefig(f'{output_dir}/graphs/train/individual_gradients_20_30.png', format='png')
     plt.show()
 
 
@@ -86,6 +91,8 @@ def manually_manipulate_signal(X_reshaped):
         plt.legend(("Original X", "Changed X"))
         plt.xlabel("Timestep")
         plt.title(f"Frequency {freq:.2f} Hz")
+        plt.tight_layout()
+        plt.savefig(f'{output_dir}/graphs/train/mm_original_and_changed_{freq:.2f}Hz.png', format='png')
         plt.show()
 
         plt.figure(figsize=(16, 4))
@@ -93,12 +100,20 @@ def manually_manipulate_signal(X_reshaped):
         plt.plot(var_to_np(changed_outs.squeeze()))
         plt.legend(("Original out", "Changed out"))
         plt.xlabel("Timestep")
+        plt.title(f"Frequency {freq:.2f} Hz")
+
+        plt.tight_layout()
+        plt.savefig(f'{output_dir}/graphs/train/mm_original_out_and_changed_out_{freq:.2f}Hz.png')
         plt.show()
 
         plt.figure(figsize=(16, 4))
         plt.plot(var_to_np(changed_outs.squeeze()) - var_to_np(outs.squeeze()))
         plt.plot(sine[-len(outs.squeeze()):] * 0.4)
         plt.legend(("Out diff", "Added sine last part"))
+        plt.title(f"Frequency {freq:.2f} Hz")
+
+        plt.tight_layout()
+        plt.savefig(f'{output_dir}/graphs/train/mm_output_original_difference_time{freq:.2f}Hz.png')
         plt.xlabel("Timestep")
         plt.show()
 
@@ -109,6 +124,10 @@ def manually_manipulate_signal(X_reshaped):
                  np.abs(np.fft.rfft(sine[-len(outs.squeeze()):] * 0.4)))
         plt.legend(("Out diff", "Added sine last part"))
         plt.xlabel("Frequency [Hz]")
+        plt.title(f"Frequency {freq:.2f} Hz")
+        plt.tight_layout()
+        plt.savefig(f'{output_dir}/graphs/train/mm_output_original_difference_time_frequency_{freq:.2f}Hz.png')
+
         plt.show()
 
 
@@ -138,19 +157,19 @@ if __name__ == '__main__':
     n_preds_per_input = get_output_shape(model, data.in_channels, 1200)[1]
     data.cut_input(input_time_length, n_preds_per_input, False)
     train_set, test_set = data.train_set, data.test_set
-
-    wSizes = [2 * n_preds_per_input, 682]
+    wSizes = [2 * n_preds_per_input, 683]
     corrcoef = get_corr_coef(train_set, model)
 
     X_reshaped = np.asarray(train_set.X)
     print(X_reshaped.shape)
-    X_reshaped = reshape_Xs(wSizes[0], X_reshaped, 'Train', corrcoef)
-
+    X_reshaped = reshape_Xs(wSizes[1], X_reshaped)
+    summary(model.float(), input_size=(data.in_channels, 683, 1))
     new_model = create_new_model(model, 'conv_classifier')
     with torch.no_grad():
         test_out = new_model(np_to_var(X_reshaped[:2]))
     new_model.eval()
     n_filters = test_out.shape[1]
+    # summary(new_model.float(), input_size=(data.in_channels, 1038, 1))
 
     print('Full window size')
 

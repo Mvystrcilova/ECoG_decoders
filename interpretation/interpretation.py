@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from braindecode.util import np_to_var, var_to_np
 import torch
+from global_config import home, output_dir
 
 
 def get_corr_coef(dataset, model):
@@ -18,7 +19,7 @@ def get_corr_coef(dataset, model):
     return corrcoef
 
 
-def reshape_Xs(wSize, X_reshaped, setname, corrcoef):
+def reshape_Xs(wSize, X_reshaped):
     nWindows = int(X_reshaped.shape[2] / wSize)
     # will move windows into batch axis
     # so first ensure they are exactly divisible, by cutting out rest
@@ -67,7 +68,7 @@ def plot_correlation(batch_X, new_model, coef, outs_shape=None, setname=''):
         mean_out = get_outs_shape(outs_shape, outs)
     else:
         mean_out = torch.mean(outs)
-    mean_out.backward(retain_graph=True)
+    mean_out.backward(torch.tensor(2), retain_graph=True)
     amp_grads = var_to_np(amps_th.grad).squeeze(-1)
     plot_gradients(batch_X, np.mean(amp_grads, axis=(0, 1)), corrcoef=coef, wsize=setname)
     plot_gradients(batch_X, np.mean(np.abs(amp_grads), axis=(0, 1)), coef, 'Absolute ', wsize=setname)
@@ -81,5 +82,8 @@ def plot_gradients(batch_X, y, corrcoef, title_prefix='', setname='', wsize=''):
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Gradient')
     plt.title("{:s} {:s}Amplitude Gradients (Corr {:.2f}%, {})".format(title_prefix, setname, corrcoef * 100, wsize))
+    plt.tight_layout()
+    plt.savefig(f'{output_dir}/graphs/train/{title_prefix}_Amplitude_Gradients_corr{setname}%_{wsize}.png')
     plt.show()
+
     plt.close(fig)

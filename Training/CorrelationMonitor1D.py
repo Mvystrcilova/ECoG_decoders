@@ -13,11 +13,11 @@ class CorrelationMonitor1D(Callback):
         Temporal length of one input to the model.
     """
 
-    def __init__(self, input_time_length=None, setname=None, split=0):
+    def __init__(self, input_time_length=None, output_dir=None, split=0):
         self.input_time_length = input_time_length
-        self.setname = setname
         self.step_number = 0
         self.split = split
+        self.output_dir = output_dir
 
     def monitor_batch(self, msg):
         print(msg)
@@ -103,7 +103,8 @@ class CorrelationMonitor1D(Callback):
             if net.max_correlation < valid_corr:
                 net.max_correlation = valid_corr
                 net.history.record('validation_correlation_best', True)
-                torch.save(net.module, home + f'/models/saved_models/models_2/best_model_split_{self.split}')
+                if self.output_dir is not None:
+                    torch.save(net.module, home + f'/models/saved_models/{self.output_dir}/best_model_split_{self.split}')
             else:
                 net.history.record('validation_correlation_best', False)
 
@@ -143,6 +144,4 @@ class CorrelationMonitor1D(Callback):
         target_timeseries = np.concatenate(targets_per_trial, axis=0)
 
         corr = np.corrcoef(target_timeseries, pred_timeseries)[0, 1]
-        key = self.setname + '_corr'
-        msg = {key: float(corr)}
         return corr
