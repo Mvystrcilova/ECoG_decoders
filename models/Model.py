@@ -14,7 +14,10 @@ logging.basicConfig(format='%(asctime)s %(levelname)s : %(message)s',
 
 def load_model(model_file):
     log.info("Loading CNN model...")
-    model = torch.load(home + model_file)
+    if not torch.cuda.is_available():
+        model = torch.load(home + model_file, map_location=torch.device('cpu'))
+    else:
+        model = torch.load(home + model_file)
     # fix for new pytorch
     for m in model.modules():
         if m.__class__.__name__ == 'Conv2d':
@@ -38,16 +41,22 @@ def create_new_model(model, module_name):
     return new_model
 
 
-def change_network_stride(model):
+def change_network_stride(model, kernel_sizes=None, dilations=None):
+    if kernel_sizes is None:
+        kernel_sizes = [3, 3, 3, 3]
+
     new_model = nn.Sequential()
     strides = [1, 1, 1, 1]
-    kernel_sizes = [4, 4, 4, 4]
     i = 0
     for name, child in model.named_children():
         # print(name)
         if ('pool' in name) and (len(name) <= 8):
             print(child.kernel_size, child.stride)
-            new_model.add_module(f'pool_{i}', nn.MaxPool2d(kernel_size=(kernel_sizes[i], 1), stride=(strides[i], 1), padding=child.padding, dilation=child.dilation, ceil_mode=child.ceil_mode))
+            if dilations is None:
+                new_model.add_module(f'pool_{i}', nn.MaxPool2d(kernel_size=(kernel_sizes[i], 1), stride=(strides[i], 1), padding=child.padding, dilation=child.dilation, ceil_mode=child.ceil_mode))
+            else:
+                new_model.add_module(f'pool_{i}', nn.MaxPool2d(kernel_size=(kernel_sizes[i], 1), stride=(strides[i], 1), padding=child.padding, dilation=(dilations[i], 1), ceil_mode=child.ceil_mode))
+
             print(name, strides[i], kernel_sizes[i])
             i += 1
         else:

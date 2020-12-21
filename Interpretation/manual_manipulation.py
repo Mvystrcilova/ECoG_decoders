@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 from braindecode.models.util import get_output_shape
 from braindecode.util import np_to_var, var_to_np
@@ -5,7 +7,7 @@ from matplotlib import pyplot as plt  # equiv. to: import matplotlib.pyplot as p
 import scipy.io as sio
 from tqdm.autonotebook import tqdm
 from cycler import cycler
-from interpretation import get_corr_coef, reshape_Xs, calculate_phase_and_amps, plot_correlation, \
+from Interpretation.interpretation import get_corr_coef, reshape_Xs, calculate_phase_and_amps, plot_correlation, \
     plot_gradients
 from models.Model import load_model, create_new_model
 import sys
@@ -24,7 +26,7 @@ matplotlib.rcParams['font.size'] = 14
 seaborn.set_style('darkgrid')
 
 
-def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef):
+def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef, output_file):
     print('Plotting individual gradients')
     plt.figure(figsize=(18, 5))
     plt.plot(np.fft.rfftfreq(batch_X.shape[2], 1 / 250.0), np.mean(amp_grads_per_crop, axis=(1)).T, lw=0.25,
@@ -38,7 +40,7 @@ def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef):
     plt.ylabel('Gradient')
     plt.title("{:s} Amplitude Individual Crop Gradients (Corr {:.2f}%)".format(setname, corrcoef * 100))
     plt.tight_layout()
-    plt.savefig(f'{output_dir}/graphs/train/individual_gradients_80_90.png')
+    plt.savefig(f'{output_file}/individual_gradients_80_90.png')
 
     plt.show()
     plt.figure(figsize=(18, 5))
@@ -51,7 +53,7 @@ def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef):
     plt.ylabel('Gradient')
     plt.title("{:s} Amplitude Gradients (Corr {:.2f}%)".format(setname, corrcoef * 100))
     plt.tight_layout()
-    plt.savefig(f'{output_dir}/graphs/train/individual_gradients_20_30.png', format='png')
+    plt.savefig(f'{output_file}/individual_gradients_20_30.png', format='png')
     plt.show()
 
 
@@ -75,7 +77,7 @@ def look_at_interesting_crops(interesting_crops, ):
     pass
 
 
-def manually_manipulate_signal(X_reshaped):
+def manually_manipulate_signal(X_reshaped, output):
     for freq in (250 / 3, 60, 40, 250 / (3 ** 2), 250 / (3 ** 3)):
         with torch.no_grad():
             batch_X = X_reshaped[:1]
@@ -92,7 +94,7 @@ def manually_manipulate_signal(X_reshaped):
         plt.xlabel("Timestep")
         plt.title(f"Frequency {freq:.2f} Hz")
         plt.tight_layout()
-        plt.savefig(f'{output_dir}/graphs/train/mm_original_and_changed_{freq:.2f}Hz.png', format='png')
+        plt.savefig(f'{output}/mm_original_and_changed_{freq:.2f}Hz.png', format='png')
         plt.show()
 
         plt.figure(figsize=(16, 4))
@@ -103,7 +105,7 @@ def manually_manipulate_signal(X_reshaped):
         plt.title(f"Frequency {freq:.2f} Hz")
 
         plt.tight_layout()
-        plt.savefig(f'{output_dir}/graphs/train/mm_original_out_and_changed_out_{freq:.2f}Hz.png')
+        plt.savefig(f'{output}/mm_original_out_and_changed_out_{freq:.2f}Hz.png')
         plt.show()
 
         plt.figure(figsize=(16, 4))
@@ -113,7 +115,7 @@ def manually_manipulate_signal(X_reshaped):
         plt.title(f"Frequency {freq:.2f} Hz")
 
         plt.tight_layout()
-        plt.savefig(f'{output_dir}/graphs/train/mm_output_original_difference_time{freq:.2f}Hz.png')
+        plt.savefig(f'{output}/mm_output_original_difference_time{freq:.2f}Hz.png')
         plt.xlabel("Timestep")
         plt.show()
 
@@ -126,7 +128,7 @@ def manually_manipulate_signal(X_reshaped):
         plt.xlabel("Frequency [Hz]")
         plt.title(f"Frequency {freq:.2f} Hz")
         plt.tight_layout()
-        plt.savefig(f'{output_dir}/graphs/train/mm_output_original_difference_time_frequency_{freq:.2f}Hz.png')
+        plt.savefig(f'{output}/mm_output_original_difference_time_frequency_{freq:.2f}Hz.png')
 
         plt.show()
 
@@ -149,53 +151,67 @@ def get_amp_grads_per_crops(outs, X_reshaped):
 
     return amp_grads_per_crop
 
+trained_modes = ['trained', 'untrained']
+eval_modes = ['train', 'test']
 
 if __name__ == '__main__':
-    model_file = '/models/saved_models/best_model_1'
-    model = load_model(model_file)
-    data = Data(home + '/previous_work/ALL_11_FR1_day1_absVel.mat', -1)
-    n_preds_per_input = get_output_shape(model, data.in_channels, 1200)[1]
-    data.cut_input(input_time_length, n_preds_per_input, False)
-    train_set, test_set = data.train_set, data.test_set
-    wSizes = [2 * n_preds_per_input, 683]
-    corrcoef = get_corr_coef(train_set, model)
+    model_name = 'model_strides_4422_dilations_41664256'
+    for trained_mode in trained_modes:
+        for eval_mode in eval_modes:
 
-    X_reshaped = np.asarray(train_set.X)
-    print(X_reshaped.shape)
-    X_reshaped = reshape_Xs(wSizes[1], X_reshaped)
-    summary(model.float(), input_size=(data.in_channels, 683, 1))
-    new_model = create_new_model(model, 'conv_classifier')
-    with torch.no_grad():
-        test_out = new_model(np_to_var(X_reshaped[:2]))
-    new_model.eval()
-    n_filters = test_out.shape[1]
-    # summary(new_model.float(), input_size=(data.in_channels, 1038, 1))
+            if trained_mode == 'untrained':
+                model_file = f'/models/saved_models/{model_name}/initial_{model_name}'
+            else:
+                model_file = f'/models/saved_models/{model_name}/best_model_split_0'
 
-    print('Full window size')
+            output = f'{output_dir}/graphs/{model_name}/{eval_mode}/{trained_mode}/'
+            Path(output).mkdir(parents=True, exist_ok=True)
+            model = load_model(model_file)
+            data = Data(home + '/previous_work/ALL_11_FR1_day1_absVel.mat', -1)
+            n_preds_per_input = get_output_shape(model, data.in_channels, 1200)[1]
+            data.cut_input(input_time_length, n_preds_per_input, False)
+            train_set, test_set = data.train_set, data.test_set
+            if eval_mode == 'test':
+                train_set = test_set
+            wSizes = [1038, 800]
+            corrcoef = get_corr_coef(train_set, model)
 
-    batch_X = X_reshaped[:1]
-    plot_correlation(batch_X, new_model, corrcoef)
+            X_reshaped = np.asarray(train_set.X)
+            print(X_reshaped.shape)
+            X_reshaped = reshape_Xs(wSizes[0], X_reshaped)
+            # summary(model.float(), input_size=(data.in_channels, 683, 1))
+            new_model = create_new_model(model, 'conv_classifier')
+            with torch.no_grad():
+                test_out = new_model(np_to_var(X_reshaped[:2]).double())
+            new_model.eval()
+            n_filters = test_out.shape[1]
+            # summary(new_model.float(), input_size=(data.in_channels, 1038, 1))
 
-    print('Smaller window size')
+            print('Full window size')
 
-    batch_X = X_reshaped[:1, :, :682]
-    plot_correlation(batch_X, new_model, corrcoef, None, setname='Smaller window')
+            batch_X = X_reshaped[:1]
+            plot_correlation(batch_X, new_model, corrcoef, output_file=output)
 
-    print('Last window only')
-    batch_X = X_reshaped[:1]
-    plot_correlation(batch_X, new_model, corrcoef, 'last_window', 'Last window')
+            print('Smaller window size')
 
-    print('Random window')
-    plot_correlation(batch_X, new_model, corrcoef, 'random_window', 'Random window')
+            batch_X = X_reshaped[:1, :, :900]
+            plot_correlation(batch_X, new_model, corrcoef, output, None, setname='Smaller window')
 
-    print('Absolute full window')
-    outs = plot_correlation(batch_X, new_model, corrcoef, 'absolute_full_window', 'Absolute Full Window')
+            print('Last window only')
+            batch_X = X_reshaped[:1]
+            plot_correlation(batch_X, new_model, corrcoef, output, 'last_window', 'Last window')
 
-    amp_grads_per_crop = get_amp_grads_per_crops(outs, X_reshaped)
-    plot_gradients(batch_X, np.mean(amp_grads_per_crop, axis=(0, 1)), corrcoef=corrcoef,
-                   title_prefix='Train', wsize='Full windows crops')
-    plot_individual_gradients(batch_X, amp_grads_per_crop, 'Train', corrcoef)
-    manually_manipulate_signal(X_reshaped)
+            print('Random window')
+            plot_correlation(batch_X, new_model, corrcoef, output, 'random_window', 'Random window')
+
+            print('Absolute full window')
+            outs = plot_correlation(batch_X, new_model, corrcoef, output, 'absolute_full_window', 'Absolute Full Window')
+
+            amp_grads_per_crop = get_amp_grads_per_crops(outs, X_reshaped)
+            plot_gradients(batch_X, np.mean(amp_grads_per_crop, axis=(0, 1)), corrcoef=corrcoef,
+                           title_prefix='Train', wsize='Full windows crops', output_file=output)
+            plot_individual_gradients(batch_X, amp_grads_per_crop, 'Train', corrcoef, output)
+            manually_manipulate_signal(X_reshaped, output)
 
 
 

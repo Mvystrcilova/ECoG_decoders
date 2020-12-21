@@ -1,4 +1,4 @@
-torch~=1.7.0
+torch~=1.7.1
 skorch~=0.9.0
 braindecode~=0.5
 matplotlib~=3.3.2
@@ -12,3 +12,4 @@ torchsummary~=1.5.1
 h5py~=2.10.0
 seaborn~=0.11.0
 mne~=0.21.1
+tensorboard~=2.4

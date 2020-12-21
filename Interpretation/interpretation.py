@@ -1,8 +1,10 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 from braindecode.util import np_to_var, var_to_np
 import torch
-from global_config import home, output_dir
+from global_config import home, output_dir, interpreted_model_name, eval_mode, trained_mode
 
 
 def get_corr_coef(dataset, model):
@@ -59,7 +61,7 @@ def get_outs_shape(outs_shape, outs):
         return torch.mean(outs[:, :, outs_shape, ])
 
 
-def plot_correlation(batch_X, new_model, coef, outs_shape=None, setname=''):
+def plot_correlation(batch_X, new_model, coef, output_file, outs_shape=None, setname=''):
     iffted, amps_th, phases_th = calculate_phase_and_amps(batch_X)
     outs = new_model(iffted.double())
 
@@ -68,14 +70,15 @@ def plot_correlation(batch_X, new_model, coef, outs_shape=None, setname=''):
         mean_out = get_outs_shape(outs_shape, outs)
     else:
         mean_out = torch.mean(outs)
-    mean_out.backward(torch.tensor(2), retain_graph=True)
+    mean_out.backward(retain_graph=True)
     amp_grads = var_to_np(amps_th.grad).squeeze(-1)
-    plot_gradients(batch_X, np.mean(amp_grads, axis=(0, 1)), corrcoef=coef, wsize=setname)
-    plot_gradients(batch_X, np.mean(np.abs(amp_grads), axis=(0, 1)), coef, 'Absolute ', wsize=setname)
+    plot_gradients(batch_X, np.mean(amp_grads, axis=(0, 1)), corrcoef=coef, wsize=setname, output_file=output_file)
+    plot_gradients(batch_X, np.mean(np.abs(amp_grads), axis=(0, 1)), coef, title_prefix='Absolute_', wsize=setname,
+                   output_file=output_file)
     return outs
 
 
-def plot_gradients(batch_X, y, corrcoef, title_prefix='', setname='', wsize=''):
+def plot_gradients(batch_X, y, corrcoef, output_file, title_prefix = '', setname='', wsize=''):
     fig = plt.figure(figsize=(12, 4))
     plt.plot(np.fft.rfftfreq(batch_X.shape[2], 1 / 250.0), y)
     plt.axhline(y=0, color='black')
@@ -83,7 +86,7 @@ def plot_gradients(batch_X, y, corrcoef, title_prefix='', setname='', wsize=''):
     plt.ylabel('Gradient')
     plt.title("{:s} {:s}Amplitude Gradients (Corr {:.2f}%, {})".format(title_prefix, setname, corrcoef * 100, wsize))
     plt.tight_layout()
-    plt.savefig(f'{output_dir}/graphs/train/{title_prefix}_Amplitude_Gradients_corr{setname}%_{wsize}.png')
+    plt.savefig(f'{output_file}/{title_prefix}Amplitude_Gradients_corr{setname}%_{wsize}.png')
     plt.show()
 
     plt.close(fig)
