@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pandas
 from braindecode.regressor import EEGRegressor
 
 from Interpretation.interpretation import get_corr_coef
@@ -75,7 +76,7 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
     # summary(model.model, input_size=(input_channels, input_time_length, 1))
     changed_model = change_network_stride(model.model, kernel_sizes, dilations, remove_maxpool=False,
                                           change_conv_layers=conv_dilations is not None, conv_dilations=conv_dilations)
-    print(changed_model)
+    # print(changed_model)
 
     return model, changed_model, model_name
 
@@ -92,10 +93,13 @@ if __name__ == '__main__':
 
     if trajectory_index == 0:
         model_string = f'm_vel'
+        variable = 'vel'
     else:
         model_string = 'm_absVel'
+        variable = 'absVel'
     if remove_maxpool:
         model_string = 'no_maxpool_model'
+
 
     model_name = ''
 
@@ -104,83 +108,19 @@ if __name__ == '__main__':
     dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
     kernel_sizes = [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
 
-    for patient_index in range(1, 13):
-        data = Data(home + f'/previous_work/P{patient_index}_data.mat', num_of_folds=0, low_pass=False,
-                    trajectory_index=trajectory_index)
-        input_channels = data.in_channels
+    df = pandas.DataFrame()
+    for dilation in dilations:
+        for patient_index in range(1, 13):
+            data = Data(home + f'/previous_work/P{patient_index}_data.mat', num_of_folds=0, low_pass=False,
+                        trajectory_index=trajectory_index)
+            input_channels = data.in_channels
 
-        correlation_monitor = CorrelationMonitor1D(input_time_length=input_time_length,
-                                                   output_dir=f'{model_string}_k_{model_name}_p_{patient_index}')
+            correlation_monitor = CorrelationMonitor1D(input_time_length=input_time_length,
+                                                       output_dir=f'{model_string}_k_{model_name}_p_{patient_index}')
 
-        if data.num_of_folds == -1:
-            model, changed_model, model_name = get_model(input_channels, input_time_length, dilations=dilations[0],
-                                                         kernel_sizes=kernel_sizes[0])
-            if cuda:
-                device = 'cuda'
-                model.model = changed_model.cuda()
-
-            else:
-                model.model = changed_model
-                device = 'cpu'
-            n_preds_per_input = get_output_shape(model.model, model.input_channels, model.input_time_length)[1]
-            Path(home + f'/models/saved_models/{model_string}_k_{model_name}_p_{patient_index}/').mkdir(parents=True,
-                                                                                                        exist_ok=True)
-
-            data.cut_input(input_time_length=input_time_length, n_preds_per_input=n_preds_per_input, shuffle=False)
-
-            writer = get_writer(f'/logs/{model_string}_k_{model_name}_p_{patient_index}/cv_run_{1}')
-            # n_preds_per_input, test_input = test_input(input_channels, model.model)
-            # writer.add_graph(model.model, test_input)
-            print(f'starting cv epoch {-1} out of {data.num_of_folds} for model: {model_string}_k_{model_name}')
-            correlation_monitor.step_number = 0
-
-            monitor = 'validation_correlation_best'
-
-            monitors = [('correlation monitor', correlation_monitor), ('checkpoint', Checkpoint(monitor=monitor,
-                                                                                                f_history=home + f'/logs/model_{model_name}/histories/{model_string}_k_{model_name}_p_{patient_index}.json',
-                                                                                                )),
-                        ('tensorboard', TensorBoard(writer, ))]
-
-            regressor = EEGRegressor(cropped=cropped, module=model.model, criterion=model.loss_function,
-                                     optimizer=model.optimizer,
-                                     max_epochs=max_train_epochs, verbose=1, train_split=data.cv_split,
-                                     callbacks=monitors, lr=0.001, device=device).initialize()
-
-            torch.save(model.model,
-                       home + f'/models/saved_models/{model_string}_k_{model_name}_p_{patient_index}/initial_{model_string}_k_{model_name}_p_{patient_index}')
-            regressor.max_correlation = -1000
-            # for name, module in regressor.module.named_children():
-            #     module.register_forward_hook(get_activation(name))
-
-            regressor.fit(data.train_set.X, data.train_set.y)
-            best_model = load_model(
-                f'/models/saved_models/{model_string}_k_{model_name}_p_{patient_index}/best_model_split_0')
-            best_corr = get_corr_coef(data.test_set, best_model.cuda(device=device))
-            best_valid_correlations.append(best_corr)
-            print(patient_index, best_corr)
-
-        # regressor.predict(data.train_set.X[:1])
-        # for name, value in activation.items():
-        #     print(name)
-        #     if ('pool' in name) or ('conv' in name) or ('nonlin' in name):
-        #         value = value.numpy()[0, 1, :, 0]
-        #         values = [str(x) for x in value]
-        #         print(' '.join(values[:100]))
-        # print('done')
-        else:
-            fold_corrs = []
-            for i in range(data.num_of_folds):
-                writer = get_writer(
-                    f'/logs/{model_string}_k_{model_name}/{model_string}_folds_{data.num_of_folds}_k_{model_name}_p_{patient_index}/cv_run_{i + 1}')
-                Path(home + f'/models/saved_models/{model_string}_k_{model_name}/{model_string}_folds_{data.num_of_folds}_k_{model_name}_p_{patient_index}').mkdir(
-                    parents=True,
-                    exist_ok=True)
-                print(f'starting cv epoch {i} out of {data.num_of_folds}')
-                correlation_monitor.step_number = 0
-                correlation_monitor.split = i
-                correlation_monitor.output_dir = f'/models/saved_models/{model_string}_k_{model_name}/{model_string}_folds_{data.num_of_folds}_k_{model_name}_p_{patient_index}'
-                model, changed_model, model_name = get_model(input_channels, input_time_length, dilations=dilations[0],
-                                                     kernel_sizes=kernel_sizes[0])
+            if data.num_of_folds == -1:
+                model, changed_model, model_name = get_model(input_channels, input_time_length, dilations=dilation,
+                                                             kernel_sizes=kernel_sizes[2])
                 if cuda:
                     device = 'cuda'
                     model.model = changed_model.cuda()
@@ -188,53 +128,106 @@ if __name__ == '__main__':
                 else:
                     model.model = changed_model
                     device = 'cpu'
-
-                monitors = [('correlation monitor', correlation_monitor),
-                            ('checkpoint', Checkpoint(monitor='validation_correlation_best', )),
-                            ('tensorboard', TensorBoard(writer, ))]
                 n_preds_per_input = get_output_shape(model.model, model.input_channels, model.input_time_length)[1]
+                Path(home + f'/models/saved_models/{model_string}_k_{model_name}_p_{patient_index}/').mkdir(parents=True,
+                                                                                                            exist_ok=True)
+
                 data.cut_input(input_time_length=input_time_length, n_preds_per_input=n_preds_per_input, shuffle=False)
 
-                regressor = EEGRegressor(module=model.model, criterion=model.loss_function, optimizer=model.optimizer,
+                writer = get_writer(f'/logs/{model_string}_k_{model_name}_p_{patient_index}/cv_run_{1}')
+                # n_preds_per_input, test_input = test_input(input_channels, model.model)
+                # writer.add_graph(model.model, test_input)
+                print(f'starting cv epoch {-1} out of {data.num_of_folds} for model: {model_string}_k_{model_name}')
+                correlation_monitor.step_number = 0
+
+                monitor = 'validation_correlation_best'
+
+                monitors = [('correlation monitor', correlation_monitor), ('checkpoint', Checkpoint(monitor=monitor,
+                                                                                                    f_history=home + f'/logs/model_{model_name}/histories/{model_string}_k_{model_name}_p_{patient_index}.json',
+                                                                                                    )),
+                            ('tensorboard', TensorBoard(writer, ))]
+
+                regressor = EEGRegressor(cropped=cropped, module=model.model, criterion=model.loss_function,
+                                         optimizer=model.optimizer,
                                          max_epochs=max_train_epochs, verbose=1, train_split=data.cv_split,
                                          callbacks=monitors, lr=0.001, device=device).initialize()
+
                 torch.save(model.model,
-                           home + f'/models/saved_models/{model_string}_k_{model_name}/{model_string}_folds_{data.num_of_folds}_k_{model_name}_p_{patient_index}/initial_{model_string}_split_{i}')
+                           home + f'/models/saved_models/{model_string}_k_{model_name}_p_{patient_index}/initial_{model_string}_k_{model_name}_p_{patient_index}')
                 regressor.max_correlation = -1000
 
-                regressor.fit(data.train_set.X, data.train_set.y)
+                # for name, module in regressor.module.named_children():
+                #     module.register_forward_hook(get_activation(name))
 
+                regressor.fit(data.train_set.X, data.train_set.y)
                 best_model = load_model(
-                    f'/models/saved_models/{model_string}_k_{model_name}/{model_string}_k_{model_name}_p_{patient_index}/best_model_split_0')
+                    f'/models/saved_models/{model_string}_k_{model_name}_p_{patient_index}/best_model_split_0')
                 best_corr = get_corr_coef(data.test_set, best_model.cuda(device=device))
-                # lp_corr = get_corr_coef(data.low_pass_test, best_model.cuda(device=device))
-                fold_corrs.append(best_corr)
-                # lp_correlations.append(lp_corr)
+                best_valid_correlations.append(best_corr)
                 print(patient_index, best_corr)
 
-            best_valid_correlations.append(fold_corrs)
+            # regressor.predict(data.train_set.X[:1])
+            # for name, value in activation.items():
+            #     print(name)
+            #     if ('pool' in name) or ('conv' in name) or ('nonlin' in name):
+            #         value = value.numpy()[0, 1, :, 0]
+            #         values = [str(x) for x in value]
+            #         print(' '.join(values[:100]))
+            # print('done')
 
-                # X = torch.Tensor(data.test_set.X)
-                # predictions = torch.Tensor(regressor.predict(X))
-                # print(predictions)
-                # y = torch.Tensor(data.test_set.y)
-                # loss = torch.autograd.Variable(regressor.criterion()(predictions, y), True)
-                # test data correlation
-                # test_correlation = correlation_monitor.on_epoch_end(regressor, dataset_train=data.test_set,
-                #                                                     dataset_valid=data.test_set, test='test')
+            else:
+                fold_corrs = []
+                for i in range(data.num_of_folds):
+                    model, changed_model, model_name = get_model(input_channels, input_time_length,
+                                                                 dilations=dilation,
+                                                                 kernel_sizes=kernel_sizes[2])
 
-                # print('test data loss')
-                # print(loss)
+                    writer = get_writer(
+                        f'/logs/{model_string}_k_{model_name}/{model_string}_folds_{data.num_of_folds}_k_{model_name}_p_{patient_index}/cv_run_{i + 1}')
 
-    print(f'{model_string}_k_{model_name} average best correlation: ',
-          sum(best_valid_correlations) / len(best_valid_correlations))
-    f = open("./logs/avg_best_corr.txt", "a")
-    f.write(
-        f'{model_string}_k_{model_name} average best correlation: {sum(best_valid_correlations) / len(best_valid_correlations)}\n')
-    best_valid_correlations = [str(x) for x in best_valid_correlations]
-    lp_correlations = [str(x) for x in lp_correlations]
-    f.write(f'{model_string}_k_{model_name} best correlations: ' + ';'.join(best_valid_correlations))
-    f.write('\n')
-    f.write(f'{model_string}_k_{model_name} best correlations: ' + ';'.join(lp_correlations))
-    f.write('\n')
-    f.close()
+                    Path(home + f'/models/saved_models/{model_string}_k_{model_name}/{model_string}_folds_{data.num_of_folds}_k_{model_name}_p_{patient_index}').mkdir(
+                        parents=True,
+                        exist_ok=True)
+
+                    print(f'starting cv epoch {i} out of {data.num_of_folds}')
+                    correlation_monitor.step_number = 0
+                    correlation_monitor.split = i
+                    correlation_monitor.output_dir = f'{model_string}_k_{model_name}/{model_string}_folds_{data.num_of_folds}_k_{model_name}_p_{patient_index}'
+
+                    if cuda:
+                        device = 'cuda'
+                        model.model = changed_model.cuda()
+
+                    else:
+                        model.model = changed_model
+                        device = 'cpu'
+
+                    monitors = [('correlation monitor', correlation_monitor),
+                                ('checkpoint', Checkpoint(monitor='validation_correlation_best', )),
+                                ('tensorboard', TensorBoard(writer, ))]
+                    n_preds_per_input = get_output_shape(model.model, model.input_channels, model.input_time_length)[1]
+                    data.cut_input(input_time_length=input_time_length, n_preds_per_input=n_preds_per_input, shuffle=False)
+
+                    regressor = EEGRegressor(module=model.model, criterion=model.loss_function, optimizer=model.optimizer,
+                                             max_epochs=max_train_epochs, verbose=1, train_split=data.cv_split,
+                                             callbacks=monitors, lr=0.001, device=device).initialize()
+                    torch.save(model.model,
+                               home + f'/models/saved_models/{model_string}_k_{model_name}/{model_string}_folds_{data.num_of_folds}_k_{model_name}_p_{patient_index}/initial_{model_string}_split_{i}')
+                    regressor.max_correlation = -1000
+
+                    regressor.fit(data.train_set.X, data.train_set.y)
+
+                    best_model = load_model(
+                        f'/models/saved_models/{model_string}_k_{model_name}/{model_string}_k_{model_name}_p_{patient_index}/best_model_split_0')
+                    best_corr = get_corr_coef(data.test_set, best_model.cuda(device=device))
+                    fold_corrs.append(best_corr)
+                    print(patient_index, best_corr)
+
+                best_valid_correlations.append(fold_corrs)
+                Path(
+                    home + f'/ouptputs/performance/{model_string}_k_{model_name}').mkdir(
+                    parents=True,
+                    exist_ok=True)
+                df[f'p_{patient_index}'] = fold_corrs
+
+            df.to_csv(f'{home}/outputs/performance/{model_string}_k_{model_name}/{variable}_performance.csv', sep=';')

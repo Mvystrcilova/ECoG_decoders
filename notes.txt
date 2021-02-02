@@ -1,4 +1,6 @@
-7239: vel k_2
-7241: absVel k_2_d_24816
-7240: absVel k_2_d_1111
-7242: absVel k_3_d_24816
+Kernel size 1, trajectory index 0: 7259
+Kernel size 1, trajectory index 1: 7258
+Kernel size 2, trajectory index 0: 7260
+Kernel size 2, trajectory index 1: 7261
+Kernel size 3, trajectory index 0: 7263
+Kernel size 3, trajectory index 1: 7262

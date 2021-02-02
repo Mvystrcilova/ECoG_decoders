@@ -69,6 +69,10 @@ class Data:
     def split_data(self, dataset=None):
         length = len(self.datasets.X)
         index = int((length/100)*80)
+        if self.num_of_folds != -1:
+            train_set = MyDataset(self.datasets.X[:], self.datasets.y[:])
+            return train_set, None, None
+
         if dataset is None:
             train_set = MyDataset(self.datasets.X[:index], self.datasets.y[:index])
             test_set = MyDataset(self.datasets.X[index:], self.datasets.y[index:])
@@ -82,9 +86,10 @@ class Data:
                                            input_time_length=input_time_length,
                                            n_preds_per_input=n_preds_per_input)
         self.train_set = concatenate_batches(self.train_set, iterator, False)
-        self.test_set = concatenate_batches(self.test_set, iterator, False)
-        self.low_pass_train = concatenate_batches(self.low_pass_train, iterator, False)
-        self.low_pass_test = concatenate_batches(self.low_pass_test, iterator, False)
+        if self.num_of_folds == -1:
+            self.test_set = concatenate_batches(self.test_set, iterator, False)
+            self.low_pass_train = concatenate_batches(self.low_pass_train, iterator, False)
+            self.low_pass_test = concatenate_batches(self.low_pass_test, iterator, False)
 
     def cv_split(self, X, y):
         length = len(X.X)
