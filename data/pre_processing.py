@@ -2,6 +2,8 @@ import mat73
 import numpy as np
 from skorch.dataset import CVSplit, Dataset
 from Training.CropsFromTrialsIterator import CropsFromTrialsIterator
+from scipy import signal
+import matplotlib.pyplot as plt
 
 
 def read_mat_file(mat_file):
@@ -16,26 +18,63 @@ class MyDataset:
 
 
 class Data:
-    def __init__(self, mat_file, num_of_folds):
+    def __init__(self, mat_file, num_of_folds, low_pass, trajectory_index):
         self.data = read_mat_file(mat_file)
-        self.datasets = self.create_datasets()
+        self.low_pass = low_pass
+        self.band_passed_dataset = None
         self.num_of_folds = num_of_folds
+        self.datasets = self.create_datasets(True, trajectory_index=trajectory_index)
         self.train_set, self.valid_set, self.test_set = self.split_data()
+        self.low_pass_train, self.low_pass_valid, self.low_pass_test = self.split_data(self.band_passed_dataset)
         self.in_channels = self.train_set.X[0].shape[1]
         self.n_classes = len(self.train_set.y[0].shape)
         self.fold_number = 0
 
-    def create_datasets(self):
+        # if trajectory index is 0 velocity, index 1 absolute velocity
+        self.traj_ind = trajectory_index
+
+    def create_datasets(self, low_pass=False, trajectory_index=0):
         sessions = self.data.D
         Xs = [session[0].ieeg[:] for session in sessions]
-        ys = [session[0].traj for session in sessions]
+        ys = [session[0].traj[:, trajectory_index] for session in sessions]
+        # ys = [session[0].traj for session in sessions]
         print(len(Xs), len(ys))
+        self.num_of_folds = len(Xs)
         dataset = Dataset(Xs, ys)
+        if low_pass:
+            filter = signal.butter(3, 40, output='sos', fs=250)
+            print(Xs[0][:, 0].shape)
+            prev_signal = abs(np.fft.rfft(Xs[0][:, 0], n=250))
+            bandpassed_x = [signal.sosfilt(filter, x, axis=0) for x in Xs]
+            later_signal = abs(np.fft.rfft(bandpassed_x[0][:, 0], n=250))
+            # plt.xscale('log')
+            plt.xlabel('frequency [Hz]')
+            plt.ylabel('|amplitude|')
+            plt.plot(prev_signal)
+            # plt.show()
+
+            # plt.xscale('log')
+            plt.xlabel('frequency [Hz]')
+            plt.ylabel('|amplitude|')
+            plt.plot(later_signal)
+            # plt.show()
+
+            self.band_passed_dataset = Dataset(bandpassed_x, ys)
+            plt.plot(np.arange(0, len(Xs[0][:, 0][:1000])), Xs[0][:, 0][:1000], label='original')
+            plt.plot(np.arange(0, len(bandpassed_x[0][:, 0][:1000])), bandpassed_x[0][:, 0][:1000], label='low-passed')
+            # plt.show()
+
         return dataset
 
-    def split_data(self, ):
-        train_set = MyDataset(self.datasets.X[:-3], self.datasets.y[:-3])
-        test_set = MyDataset(self.datasets.X[-3:], self.datasets.y[-3:])
+    def split_data(self, dataset=None):
+        length = len(self.datasets.X)
+        index = int((length/100)*80)
+        if dataset is None:
+            train_set = MyDataset(self.datasets.X[:index], self.datasets.y[:index])
+            test_set = MyDataset(self.datasets.X[index:], self.datasets.y[index:])
+        else:
+            train_set = MyDataset(dataset.X[:index], dataset.y[:index])
+            test_set = MyDataset(dataset.X[index:], dataset.y[index:])
         return train_set, None, test_set
 
     def cut_input(self, input_time_length, n_preds_per_input, shuffle):
@@ -44,12 +83,30 @@ class Data:
                                            n_preds_per_input=n_preds_per_input)
         self.train_set = concatenate_batches(self.train_set, iterator, False)
         self.test_set = concatenate_batches(self.test_set, iterator, False)
+        self.low_pass_train = concatenate_batches(self.low_pass_train, iterator, False)
+        self.low_pass_test = concatenate_batches(self.low_pass_test, iterator, False)
 
     def cv_split(self, X, y):
         length = len(X.X)
         if self.num_of_folds == -1:
-            train_set = Dataset(X.X[:], y[:])
-            return train_set, self.test_set
+            index = int((length/100)*10)
+            index = -1
+            if not self.low_pass:
+                if index > -1:
+                    train_set = Dataset(X.X[:-index], y[:-index])
+                    valid_set = Dataset(X.X[-index:], y[-index:])
+                else:
+                    train_set = Dataset(X.X[:], y[:])
+                    valid_set = self.test_set
+                return train_set, valid_set
+            else:
+                if index > -1:
+                    train_set = Dataset(X.X[:-index], y[:-index])
+                    valid_set = Dataset(self.low_pass_train.X[-index:], self.low_pass_train.y[-index:])
+                else:
+                    train_set = Dataset(X.X[:], y[:])
+                    valid_set = self.low_pass_test
+                return train_set, valid_set
 
         fold_length = length / self.num_of_folds
 
@@ -91,4 +148,4 @@ def concatenate_batches(set, iterator, shuffle):
 
 
 if __name__ == '__main__':
-    data = read_mat_file('../previous_work/ALL_11_FR1_day1_absVel.mat')
+    data = Data('../previous_work/ALL_11_FR1_day1_absVel.mat', -1, low_pass=False, trajectory_index=0)

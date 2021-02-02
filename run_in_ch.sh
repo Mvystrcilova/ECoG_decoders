@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=volta-lp
 #SBATCH --gpus=1
-#SBATCH --mem=32G
+#SBATCH --mem=128G
 
 
 set -eux

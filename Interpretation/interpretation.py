@@ -7,9 +7,12 @@ import torch
 from global_config import home, output_dir, interpreted_model_name, eval_mode, trained_mode
 
 
-def get_corr_coef(dataset, model):
+def get_corr_coef(dataset, model, cuda=True):
     with torch.no_grad():
-        outs = model(np_to_var(dataset.X).double())
+        if cuda:
+            outs = model(np_to_var(dataset.X).double().cuda())
+        else:
+            outs =  model(np_to_var(dataset.X).double())
 
     all_y = np.array(dataset.y)
     preds = var_to_np(outs)
