@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from braindecode.util import np_to_var, var_to_np
 import torch
-from global_config import home, output_dir, interpreted_model_name, eval_mode, trained_mode
+from global_config import home, output_dir, interpreted_model_name, eval_mode, trained_mode, cuda
 
 
-def get_corr_coef(dataset, model, cuda=True):
+def get_corr_coef(dataset, model):
     with torch.no_grad():
         if cuda:
             outs = model(np_to_var(dataset.X).double().cuda())

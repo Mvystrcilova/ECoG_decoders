@@ -149,13 +149,13 @@ def manually_manipulate_signal(X_reshaped, output, model, maxpool_model=False, w
 
         plt.figure(figsize=(16, 4))
         if maxpool_model:
-            plt.plot(np.fft.rfftfreq(len(np.squeeze(outs)), 1 / 250.0)[1:],
-                     np.abs(np.fft.rfft(np.squeeze(changed_outs) - np.squeeze(outs)))[1:])
+            plt.plot(np.fft.rfftfreq(len(np.squeeze(outs)), 1 / 250.0),
+                     np.abs(np.fft.rfft(np.squeeze(changed_outs) - np.squeeze(outs))))
             # plt.plot(np.fft.rfftfreq(len(np.squeeze(changed_outs)), 1 / 250.0)[1:],
             #          np.abs(np.fft.rfft(sine[-len(np.squeeze(outs)):] * 0.4))[1:])
         else:
-            plt.plot(np.fft.rfftfreq(len(np.squeeze(outs)), 1 / 250.0)[1:],
-                     np.abs(np.fft.rfft(np.squeeze(changed_outs) - np.squeeze(outs)))[1:])
+            plt.plot(np.fft.rfftfreq(len(np.squeeze(outs)), 1 / 250.0),
+                     np.abs(np.fft.rfft(np.squeeze(changed_outs) - np.squeeze(outs))))
             # plt.plot(np.fft.rfftfreq(len(np.squeeze(changed_outs)), 1 / 250.0)[1:],
             #          np.abs(np.fft.rfft(sine[-len(np.squeeze(outs)):] * 0.4))[1:])
         plt.legend(("Out diff", "Added sine last part"))

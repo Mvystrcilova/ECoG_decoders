@@ -38,16 +38,15 @@ def create_df_from_files(files: list, mean=False):
 
 
 if __name__ == '__main__':
-    variable = 'absVel'
+    variable = 'vel'
     file_names = [f'm_{variable}_k_1111/{variable}_performance.csv', f'm_{variable}_k_2222/{variable}_performance.csv',
                   f'm_{variable}_k_3333/{variable}_performance.csv', f'm_{variable}_k_3333_dilations_392781/{variable}_performance.csv',
-                  f'm_{variable}_k_1111_dilations_1111/{variable}_performance.csv',
                   f'm_{variable}_k_2222_dilations_1111/{variable}_performance.csv', f'm_{variable}_k_3333_dilations_1111/{variable}_performance.csv',
-                  f'm_{variable}_k_1111_dilations_24816/{variable}_performance.csv', f'm_{variable}_k_2222_dilations_24816/{variable}_performance.csv',
+                  f'm_{variable}_k_2222_dilations_24816/{variable}_performance.csv',
                   f'm_{variable}_k_3333_dilations_24816/{variable}_performance.csv']
 
     files = [f'{home}/outputs/performance/{file_name}' for file_name in file_names]
-    df, cols = create_df_from_files(files, False)
+    df, cols = create_df_from_files(files, True)
     plt.boxplot(cols, showfliers=False)
     plt.xticks(numpy.arange(1, df.shape[1]+1), labels=df.columns, rotation=90)
     plt.tight_layout()
