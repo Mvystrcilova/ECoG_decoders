@@ -1,6 +1,70 @@
-Kernel size 1, trajectory index 0: 7259
-Kernel size 1, trajectory index 1: 7258
-Kernel size 2, trajectory index 0: 7260
-Kernel size 2, trajectory index 1: 7261
-Kernel size 3, trajectory index 0: 7263
-Kernel size 3, trajectory index 1: 7262
+Dilations [None]
+
+Kernel size 1, trajectory index 0: Done
+Kernel size 1, trajectory index 1: Done
+Kernel size 2, trajectory index 0: 7397 - Done
+Kernel size 2, trajectory index 1: 7398 - Done
+Kernel size 3, trajectory index 0: 7401 - Done
+Kernel size 3, trajectory index 1: 7402 - Done
+
+Dilations [1,1,1,1]
+
+Kernel size 1, trajectory index 0: 7404 --> 7445 - Done
+Kernel size 1, trajectory index 1: 7403 --> 7444 - Done
+Kernel size 2, trajectory index 0: 7393 --> 7442 - Done
+Kernel size 2, trajectory index 1: 7394 --> 7443 - Done
+Kernel size 3, trajectory index 0: 7410 --> 7446 - Done
+Kernel size 3, trajectory index 1: 7409 --> 7447 - Done
+
+Dilations [2, 4, 8, 16]
+
+Kernel size 1, trajectory index 0: 7426 --> 7453 -
+Kernel size 1, trajectory index 1: 7427 --> 7452 - Done
+Kernel size 2, trajectory index 0: 7428 --> 7450 - 7460 - Done
+Kernel size 2, trajectory index 1: 7429 --> 7451 -- Done
+Kernel size 3, trajectory index 0: 7430 --> 7449 -- 7459 - Done
+Kernel size 3, trajectory index 1: 7431 --> 7448 -- 7458 - Done
+
+
+LR 0.01
+
+Dilations [None]
+
+Kernel size 1, trajectory index 0: - 7476
+Kernel size 1, trajectory index 1:
+Kernel size 2, trajectory index 0: - 7477
+Kernel size 2, trajectory index 1:
+Kernel size 3, trajectory index 0: - 7478
+Kernel size 3, trajectory index 1:
+
+Dilations [1,1,1,1]
+
+Kernel size 1, trajectory index 0: - 7485
+Kernel size 1, trajectory index 1:
+Kernel size 2, trajectory index 0: - 7484
+Kernel size 2, trajectory index 1:
+Kernel size 3, trajectory index 0: - 7483
+Kernel size 3, trajectory index 1:
+
+Dilations [2, 4, 8, 16]
+
+Kernel size 1, trajectory index 0: - 7480
+Kernel size 1, trajectory index 1:
+Kernel size 2, trajectory index 0: - 7481
+Kernel size 2, trajectory index 1:
+Kernel size 3, trajectory index 0: - 7482
+Kernel size 3, trajectory index 1:
+
+
+Shifted
+Kernel size 1
+trajectory index 0: 7802 -- 8176
+trajectory_index 1: 7803 -- 8175
+
+Kernel size 2
+trajectory index 0: 7805 -- 8173
+trajectory_index 1: 7804 -- 8174
+
+Kernel size 3
+trajectory index 0: 7807 -- 8172
+trajectory_index 1: 7808 -- 8171

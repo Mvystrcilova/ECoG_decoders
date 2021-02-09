@@ -15,8 +15,7 @@ def load_results_file(file_path):
             key = res_line[0].split(' ')[0]
             value = [float(x) for x in res_line[1].split(';')]
             results[key] = value
-    x_ticks = ['speed initial model', 'speed dilation 1', 'speed dilation i^2',
-               'velocity initial model', 'velocity dilation 1', 'velocity dilation i^2']
+
     df = pandas.DataFrame(data=results)
     # df.columns = x_ticks
     return df
@@ -35,7 +34,7 @@ def plot_df_boxplot(df, saving_path=None):
 
 
 if __name__ == '__main__':
-    vel_results = load_results_file(home + '/outputs/avg_best_results.txt')
+    vel_results = load_results_file(home + '/outputs/vel_avg_best_results.txt')
     absVel_results = load_results_file(home + '/outputs/absVel_avg_best_results.txt')
     plot_df_boxplot(vel_results, home + '/results/vel_performance_graph.png')
     plot_df_boxplot(absVel_results, home + '/results/abs_vel_performance_graph.png')

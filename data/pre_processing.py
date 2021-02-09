@@ -18,9 +18,10 @@ class MyDataset:
 
 
 class Data:
-    def __init__(self, mat_file, num_of_folds, low_pass, trajectory_index):
+    def __init__(self, mat_file, num_of_folds, low_pass, trajectory_index, shift_data=False):
         self.data = read_mat_file(mat_file)
         self.low_pass = low_pass
+        self.shift_data = shift_data
         self.band_passed_dataset = None
         self.num_of_folds = num_of_folds
         self.datasets = self.create_datasets(True, trajectory_index=trajectory_index)
@@ -35,11 +36,16 @@ class Data:
 
     def create_datasets(self, low_pass=False, trajectory_index=0):
         sessions = self.data.D
-        Xs = [session[0].ieeg[:] for session in sessions]
-        ys = [session[0].traj[:, trajectory_index] for session in sessions]
+        if self.shift_data:
+            Xs = [session[0].ieeg[600:] for session in sessions]
+            ys = [session[0].traj[:-600, trajectory_index] for session in sessions]
+        else:
+            Xs = [session[0].ieeg[:] for session in sessions]
+            ys = [session[0].traj[:, trajectory_index] for session in sessions]
         # ys = [session[0].traj for session in sessions]
         print(len(Xs), len(ys))
-        self.num_of_folds = len(Xs)
+        if self.num_of_folds != -1:
+            self.num_of_folds = len(Xs)
         dataset = Dataset(Xs, ys)
         if low_pass:
             filter = signal.butter(3, 40, output='sos', fs=250)
@@ -136,6 +142,23 @@ class Data:
         self.fold_number += 1
         return train_set, validation_set
 
+    def get_validation_set(self):
+        length = len(self.train_set.X)
+        fold_length = length / self.num_of_folds
+        if self.fold_number == 0:
+            validation_set = Dataset(self.train_set.X[int(fold_length * (self.num_of_folds - 1)):],
+                                     self.train_set.y[int(fold_length * (self.num_of_folds - 1)):])
+
+        elif self.fold_number == self.num_of_folds:
+            validation_set = Dataset(self.train_set.X[0:int(fold_length)],
+                                     self.train_set.y[0:int(fold_length)])
+
+        else:
+            validation_set = Dataset(self.train_set.X[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)],
+                                     self.train_set.y[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)])
+
+        return validation_set
+
 
 def concatenate_batches(set, iterator, shuffle):
     complete_input = []
@@ -153,4 +176,13 @@ def concatenate_batches(set, iterator, shuffle):
 
 
 if __name__ == '__main__':
-    data = Data('../previous_work/ALL_11_FR1_day1_absVel.mat', -1, low_pass=False, trajectory_index=0)
+    data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0)
+    shifted_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0,
+                        shift_data=True)
+    print(data)
+    data.cut_input(1200, 519, False)
+    shifted_data.cut_input(1200, 519, False)
+    print(data)
+
+
+

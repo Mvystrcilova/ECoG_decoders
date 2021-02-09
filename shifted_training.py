@@ -69,7 +69,6 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
         model.model = model.model.cuda()
 
     conv_dilations = None
-    # conv_dilations = [2, 4, 8, 16]
 
     model_name = ''.join([str(x) for x in kernel_sizes])
     if dilations is not None:
@@ -80,10 +79,8 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
         conv_dilations_name = ''.join(str(x) for x in conv_dilations)
         model_name = f'{model_name}_conv_d_{conv_dilations_name}'
 
-    # summary(model.model, input_size=(input_channels, input_time_length, 1))
     changed_model = change_network_stride(model.model, kernel_sizes, dilations, remove_maxpool=False,
                                           change_conv_layers=conv_dilations is not None, conv_dilations=conv_dilations)
-    # print(changed_model)
 
     return model, changed_model, model_name
 
@@ -91,7 +88,7 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
 if __name__ == '__main__':
     args = parser.parse_args()
     input_time_length = 1200
-    max_train_epochs = 100
+    max_train_epochs = 500
     batch_size = 16
     print(cuda, home)
     set_random_seeds(seed=random_seed, cuda=cuda)
@@ -99,13 +96,13 @@ if __name__ == '__main__':
     remove_maxpool = False
     trajectory_index = args.variable
     kernel_index = 2
-    learning_rate = 0.01
+    learning_rate = 0.001
 
     if trajectory_index == 0:
-        model_string = f'm_vel'
+        model_string = f'sm_vel'
         variable = 'vel'
     else:
-        model_string = 'm_absVel'
+        model_string = 'sm_absVel'
         variable = 'absVel'
     if remove_maxpool:
         model_string = 'no_maxpool_model'
@@ -115,12 +112,13 @@ if __name__ == '__main__':
 
     best_valid_correlations = []
 
-    # dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
+    dilations = [[1, 1, 1, 1], [2, 4, 8, 16]]
     # dilations = [None]
     # dilations = [[1, 1, 1, 1], [2, 4, 8, 16]]
     # kernel_sizes = [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
 
-    for dilation in [args.dilations]:
+    for dilation in dilations:
+        best_valid_correlations = []
         print(dilation)
         print(args.kernel_size)
         model_name = ''.join([str(x) for x in args.kernel_size])
@@ -129,8 +127,8 @@ if __name__ == '__main__':
             model_name = f'{model_name}_dilations_{dilations_name}'
 
         starting_patient_index = args.starting_patient_index
-        if os.path.exists(f'{home}/outputs/performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv'):
-            df = pandas.read_csv(f'{home}/outputs/performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv',
+        if os.path.exists(f'{home}/outputs/shifted_performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv'):
+            df = pandas.read_csv(f'{home}/outputs/shifted_performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv',
                                  sep=';', index_col=0)
             df = df.T.drop_duplicates().T
             starting_patient_index = df.shape[1] + 1
@@ -139,8 +137,8 @@ if __name__ == '__main__':
             df = pandas.DataFrame()
         print(starting_patient_index)
         for patient_index in range(starting_patient_index, 13):
-            data = Data(home + f'/previous_work/P{patient_index}_data.mat', num_of_folds=0, low_pass=False,
-                        trajectory_index=trajectory_index)
+            data = Data(home + f'/previous_work/P{patient_index}_data.mat', num_of_folds=-1, low_pass=False,
+                        trajectory_index=trajectory_index, shift_data=True)
 
             input_channels = data.in_channels
             model, changed_model, model_name = get_model(input_channels, input_time_length,
@@ -167,7 +165,7 @@ if __name__ == '__main__':
                 Path(home + f'/models/saved_models/lr_{learning_rate}/{model_string}_k_{model_name}_p_{patient_index}/').mkdir(parents=True,
                                                                                                             exist_ok=True)
 
-                data.cut_input(input_time_length=input_time_length, n_preds_per_input=n_preds_per_input, shuffle=False)
+                # data.cut_input(input_time_length=input_time_length, n_preds_per_input=n_preds_per_input, shuffle=False)
 
                 writer = get_writer(f'/logs/lr_{learning_rate}/{model_string}_k_{model_name}_p_{patient_index}/cv_run_{1}')
                 # n_preds_per_input, test_input = test_input(input_channels, model.model)
@@ -200,6 +198,14 @@ if __name__ == '__main__':
                 best_corr = get_corr_coef(data.test_set, best_model.cuda(device=device))
                 best_valid_correlations.append(best_corr)
                 print(patient_index, best_corr)
+                if len(best_valid_correlations) == 12:
+                    f = open(f'{home}/outputs/{variable}_avg_best_results.txt', 'a')
+                    f.write(f'{model_string}_k_{model_name} average best correlation:{sum(best_valid_correlations)/len(best_valid_correlations)}')
+                    f.write('\n')
+                    f.write(f'{model_string}_k_{model_name} best:{best_valid_correlations}')
+                    f.write('\n')
+                    f.close()
+
 
             # regressor.predict(data.train_set.X[:1])
             # for name, value in activation.items():
@@ -258,11 +264,11 @@ if __name__ == '__main__':
 
                 best_valid_correlations.append(fold_corrs)
                 Path(
-                    home + f'/outputs/performance/lr_{learning_rate}/{model_string}_k_{model_name}').mkdir(
+                    home + f'/outputs/shifted_performance/lr_{learning_rate}/{model_string}_k_{model_name}').mkdir(
                     parents=True,
                     exist_ok=True)
                 patient_df = pandas.DataFrame()
                 patient_df[f'p_{patient_index}'] = fold_corrs
                 df = pandas.concat([patient_df, df], ignore_index=True, axis=1)
 
-                df.to_csv(f'{home}/outputs/performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv', sep=';')
+                df.to_csv(f'{home}/outputs/shifted_performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv', sep=';')

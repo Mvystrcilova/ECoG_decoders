@@ -1,7 +1,10 @@
 import numpy as np
 from skorch.callbacks import Callback
 import torch
+from skorch.dataset import Dataset
+
 from global_config import home
+
 
 class CorrelationMonitor1D(Callback):
     """
@@ -18,6 +21,7 @@ class CorrelationMonitor1D(Callback):
         self.step_number = 0
         self.split = split
         self.output_dir = output_dir
+        self.validation_set = None
 
     def monitor_batch(self, msg):
         print(msg)
@@ -104,7 +108,10 @@ class CorrelationMonitor1D(Callback):
                 net.max_correlation = valid_corr
                 net.history.record('validation_correlation_best', True)
                 if self.output_dir is not None:
-                    torch.save(net.module, home + f'/models/saved_models/{self.output_dir}/best_model_split_{self.split}')
+                    torch.save(net.module,
+                               home + f'/models/saved_models/{self.output_dir}/best_model_split_{self.split}')
+                self.validation_set = Dataset(valid_X, valid_y)
+
             else:
                 net.history.record('validation_correlation_best', False)
 

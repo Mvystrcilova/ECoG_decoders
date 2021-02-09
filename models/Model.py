@@ -118,7 +118,7 @@ class Model:
                               input_window_samples=1000,
                               final_conv_length=self.final_conv_lenght,
                               stride_before_pool=stride_before_pool).train()
-        print(self.model)
+        # print(self.model)
         # summary(self.model, input_size=(input_channels, input_time_length, 1))
         self.regressed = False
         self.optimizer = optim.Adam

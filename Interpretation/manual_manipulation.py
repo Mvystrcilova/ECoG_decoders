@@ -13,7 +13,7 @@ from models.Model import load_model, create_new_model
 import sys
 import matplotlib
 import seaborn
-from global_config import home, input_time_length, output_dir, random_seed
+from global_config import home, input_time_length, output_dir, random_seed, cuda
 import torch
 from matplotlib import pyplot as plt
 from matplotlib import cm
@@ -191,7 +191,10 @@ def get_amp_grads_per_crops(outs, X_reshaped):
 # model_names = ['cropped_model_strides_2222_dilations_1111', 'cropped_model_strides_2222', 'cropped_model_strides_2222_dilations_24816']
 
 
-model_names = ['model_strides_3333']
+model_names = ['lr_0.001/sm_vel_k_3333_p_', 'lr_0.001/sm_vel_k_2222_p_',
+               'lr_0.001/sm_vel_k_1111_p_', 'lr_0.001/sm_vel_k_3333_dilations_1111_p_',
+               'lr_0.001/sm_vel_k_2222_dilations_1111_p_', 'lr_0.001/sm_vel_k_2222_dilations_24816_p_',
+               'lr_0.001/sm_vel_k_3333_dilations_24816_p_']
 
 trained_modes = ['trained', 'untrained']
 eval_modes = ['train', 'test']
@@ -202,67 +205,73 @@ if __name__ == '__main__':
         model_string = 'cropped_model'
     else:
         model_string = 'model'
-    model_name = f'{model_string}_strides_3333'
+    # model_name = f'{model_string}_strides_3333'
     for model_name in model_names:
-        for trained_mode in trained_modes:
-            for eval_mode in eval_modes:
+        for patient_index in range(2, 3):
+            model_name = f'{model_name}{patient_index}'
+            for trained_mode in trained_modes:
+                for eval_mode in eval_modes:
+                    if trained_mode == 'untrained':
+                        if '/' in model_name:
+                            other_model_name = model_name.split('/')[1]
+                        else:
+                            other_model_name = model_name
+                        model_file = f'/models/saved_models/{model_name}/initial_{other_model_name}'
+                    else:
+                        model_file = f'/models/saved_models/{model_name}/best_model_split_0'
 
-                if trained_mode == 'untrained':
-                    model_file = f'/models/saved_models/{model_name}/initial_{model_name}'
-                else:
-                    model_file = f'/models/saved_models/{model_name}/best_model_split_0'
+                    output = f'{output_dir}/graphs/{model_name}/{eval_mode}/{trained_mode}/'
+                    Path(output).mkdir(parents=True, exist_ok=True)
+                    model = load_model(model_file)
+                    print(model_file)
+                    data = Data(home + f'/previous_work/P{patient_index}_data.mat', -1, False, 0, True)
+                    n_preds_per_input = get_output_shape(model, data.in_channels, 1200)[1]
+                    data.cut_input(input_time_length, n_preds_per_input, False)
+                    train_set, test_set = data.train_set, data.test_set
 
-                output = f'{output_dir}/graphs/{model_name}/{eval_mode}/{trained_mode}/'
-                Path(output).mkdir(parents=True, exist_ok=True)
-                model = load_model(model_file)
-                data = Data(home + '/previous_work/ALL_11_FR1_day1_absVel.mat', -1)
-                n_preds_per_input = get_output_shape(model, data.in_channels, 1200)[1]
-                data.cut_input(input_time_length, n_preds_per_input, False)
-                train_set, test_set = data.train_set, data.test_set
+                    if eval_mode == 'test':
+                        train_set = test_set
+                    wSizes = [1038, 628]
+                    corrcoef = get_corr_coef(train_set, model, cuda=cuda)
 
-                if eval_mode == 'test':
-                    train_set = test_set
-                wSizes = [1038, 628]
-                corrcoef = get_corr_coef(train_set, model)
+                    X_reshaped = np.asarray(train_set.X)
+                    print(X_reshaped.shape)
+                    X_reshaped = reshape_Xs(wSizes[0], X_reshaped)
+                    # summary(model.float(), input_size=(data.in_channels, 683, 1))
+                    new_model = create_new_model(model, 'conv_classifier')
+                    with torch.no_grad():
+                        test_out = new_model(np_to_var(X_reshaped[:2]).double())
+                    new_model.eval()
+                    n_filters = test_out.shape[1]
+                    small_window = input_time_length - n_preds_per_input + 1
+                    # summary(new_model.float(), input_size=(data.in_channels, small_window, 1))
 
-                X_reshaped = np.asarray(train_set.X)
-                print(X_reshaped.shape)
-                X_reshaped = reshape_Xs(wSizes[0], X_reshaped)
-                # summary(model.float(), input_size=(data.in_channels, 683, 1))
-                new_model = create_new_model(model, 'conv_classifier')
-                with torch.no_grad():
-                    test_out = new_model(np_to_var(X_reshaped[:2]).double())
-                new_model.eval()
-                n_filters = test_out.shape[1]
-                small_window = input_time_length - n_preds_per_input + 1
-                # summary(new_model.float(), input_size=(data.in_channels, small_window, 1))
+                    print('Full window size')
 
-                print('Full window size')
+                    batch_X = X_reshaped[:1]
+                    plot_correlation(batch_X, new_model, corrcoef, output_file=output)
 
-                batch_X = X_reshaped[:1]
-                plot_correlation(batch_X, new_model, corrcoef, output_file=output)
+                    print('Smaller window size')
 
-                print('Smaller window size')
+                    batch_X = X_reshaped[:1, :, :small_window]
+                    plot_correlation(batch_X, new_model, corrcoef, output, None, setname='Smaller window')
 
-                batch_X = X_reshaped[:1, :, :small_window]
-                plot_correlation(batch_X, new_model, corrcoef, output, None, setname='Smaller window')
+                    print('Last window only')
+                    batch_X = X_reshaped[:1]
+                    plot_correlation(batch_X, new_model, corrcoef, output, 'last_window', 'Last window')
 
-                print('Last window only')
-                batch_X = X_reshaped[:1]
-                plot_correlation(batch_X, new_model, corrcoef, output, 'last_window', 'Last window')
+                    print('Random window')
+                    plot_correlation(batch_X, new_model, corrcoef, output, 'random_window', 'Random window')
 
-                print('Random window')
-                plot_correlation(batch_X, new_model, corrcoef, output, 'random_window', 'Random window')
+                    print('Absolute full window')
+                    outs = plot_correlation(batch_X, new_model, corrcoef, output, 'absolute_full_window', 'Absolute Full Window')
 
-                print('Absolute full window')
-                outs = plot_correlation(batch_X, new_model, corrcoef, output, 'absolute_full_window', 'Absolute Full Window')
-
-                # amp_grads_per_crop = get_amp_grads_per_crops(outs, X_reshaped)
-                # plot_gradients(batch_X, np.mean(amp_grads_per_crop, axis=(0, 1)), corrcoef=corrcoef,
-                #                title_prefix='Train', wsize='Full windows crops', output_file=output)
-                # plot_individual_gradients(batch_X, amp_grads_per_crop, 'Train', corrcoef, output)
-                manually_manipulate_signal(X_reshaped, output, new_model, white_noise=True, maxpool_model=False)
-                manually_manipulate_signal(X_reshaped, output, new_model, white_noise=False, maxpool_model=False)
+                    amp_grads_per_crop = get_amp_grads_per_crops(outs, X_reshaped)
+                    plot_gradients(batch_X, np.mean(amp_grads_per_crop, axis=(0, 1)), corrcoef=corrcoef,
+                                   title_prefix='Train', wsize='Full windows crops', output_file=output)
+                    plot_individual_gradients(batch_X, amp_grads_per_crop, 'Train', corrcoef, output)
+                    manually_manipulate_signal(X_reshaped, output, new_model, white_noise=True, maxpool_model=False)
+                    manually_manipulate_signal(X_reshaped, output, new_model, white_noise=False, maxpool_model=False)
 
 
 
