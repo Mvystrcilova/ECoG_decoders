@@ -5,7 +5,7 @@ from global_config import home, input_time_length
 from models.Model import load_model
 import pandas
 
-from results.performance_visualization import plot_df_boxplot
+from visualization.performance_visualization import plot_df_boxplot
 
 
 def get_lowpass_corr(model, data):

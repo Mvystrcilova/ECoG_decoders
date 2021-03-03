@@ -6,7 +6,7 @@ set -eux
 TAG=diplomka_image
 TMP_DIR=`mktemp -d`
 CONTEXT_DIR=`mktemp -d`
-IMG_DIR='imgdir'
+IMG_DIR='imgdir2'
 
 mkdir -p "$IMG_DIR" "$CONTEXT_DIR"
 

@@ -17,7 +17,7 @@ from global_config import home, input_time_length, output_dir, random_seed, cuda
 import torch
 from matplotlib import pyplot as plt
 from matplotlib import cm
-from data.pre_processing import Data
+from data.pre_processing import Data, get_num_of_channels
 from torchsummary import summary
 import random
 
@@ -190,15 +190,79 @@ def get_amp_grads_per_crops(outs, X_reshaped):
 #                'cropped_model_strides_3333_dilations_392781_conv_d_1111']
 # model_names = ['cropped_model_strides_2222_dilations_1111', 'cropped_model_strides_2222', 'cropped_model_strides_2222_dilations_24816']
 
-
-model_names = ['lr_0.001/sm_vel_k_3333_p_', 'lr_0.001/sm_vel_k_2222_p_',
-               'lr_0.001/sm_vel_k_1111_p_', 'lr_0.001/sm_vel_k_3333_dilations_1111_p_',
-               'lr_0.001/sm_vel_k_2222_dilations_1111_p_', 'lr_0.001/sm_vel_k_2222_dilations_24816_p_',
-               'lr_0.001/sm_vel_k_3333_dilations_24816_p_']
+variable = 'absVel'
+model_prefix = 'm'
+model_names = [f'lr_0.001/{model_prefix}_{variable}_k_1111', f'lr_0.001/{model_prefix}_{variable}_k_2222',
+               f'lr_0.001/{model_prefix}_{variable}_k_3333', f'lr_0.001/{model_prefix}_{variable}_k_2222_dilations_1111',
+               f'lr_0.001/{model_prefix}_{variable}_k_3333_dilations_1111',
+               f'lr_0.001/{model_prefix}_{variable}_k_2222_dilations_24816',
+               f'lr_0.001/{model_prefix}_{variable}_k_3333_dilations_24816']
+model_names = [f'lr_0.001/{model_prefix}_{variable}_k_2222_dilations_24816',
+               f'lr_0.001/{model_prefix}_{variable}_k_3333_dilations_24816',f'lr_0.001/{model_prefix}_{variable}_k_4444_dilations_1111',  f'lr_0.001/{model_prefix}_{variable}_k_4444_dilations_24816']
 
 trained_modes = ['trained', 'untrained']
-eval_modes = ['train', 'test']
+eval_modes = ['train', 'validation']
 cropped = False
+
+
+def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, model_file=None, shift=False, high_pass=False, trajectory_index=0,
+                          multi_layer=False, motor_channels=None):
+    if model_file is None:
+        if '/' in model_name:
+            other_model_name = model_name.split('/')[1] + f'_p_{patient_index}'
+        else:
+            other_model_name = f'{model_name}_p_{patient_index}'
+        if trained_mode == 'untrained':
+
+            model_file = f'/models/saved_models/{model_name}/{other_model_name}/initial_{other_model_name}'
+        else:
+            model_file = f'/models/saved_models/{model_name}/{other_model_name}/best_model_split_0'
+
+    output = f'{output_dir}/hp_graphs/{model_name}/{eval_mode}/{trained_mode}/'
+    # Path(output).mkdir(parents=True, exist_ok=True)
+    model = load_model(model_file)
+    print(model_file)
+    print('motor channels:', motor_channels)
+
+    in_channels = get_num_of_channels(home + f'/previous_work/P{patient_index}_data.mat')
+    n_preds_per_input = get_output_shape(model, in_channels, 1200)[1]
+    small_window = input_time_length - n_preds_per_input + 1
+    data = Data(home + f'/previous_work/P{patient_index}_data.mat', -1, low_pass=False, trajectory_index=trajectory_index,
+                shift_data=shift, high_pass=high_pass, shift_by=int(small_window/2))
+
+    data.cut_input(input_time_length, n_preds_per_input, False)
+    train_set, test_set = data.train_set, data.test_set
+    corrcoef = get_corr_coef(train_set, model)
+    num_channels = None
+
+    # if motor_channels is not None:
+    #     if motor_channels:
+    #         train_set = data.get_certain_channels(train_set, True)
+    #         test_set = data.get_certain_channels(test_set, True)
+    #         num_channels = len(data.motor_channels)
+    #     else:
+    #         train_set = data.get_certain_channels(train_set, False)
+    #         test_set = data.get_certain_channels(test_set, False)
+    #         num_channels = len(data.non_motor_channels)
+    if eval_mode == 'validation':
+        train_set = test_set
+    # wSizes = [1038, 628]
+
+    X_reshaped = np.asarray(train_set.X)
+    print(X_reshaped.shape)
+    X_reshaped = reshape_Xs(input_time_length, X_reshaped)
+    # summary(model.float(), input_size=(data.in_channels, 683, 1))
+    if not multi_layer:
+        new_model = create_new_model(model, 'conv_classifier', input_channels=num_channels)
+    else:
+        new_model = model
+    # with torch.no_grad():
+    #     test_out = new_model(np_to_var(X_reshaped[:2]).double())
+    new_model.eval()
+    # n_filters = test_out.shape[1]
+
+    return corrcoef, new_model, X_reshaped, small_window, output, data.motor_channels, data.non_motor_channels
+
 
 if __name__ == '__main__':
     if cropped:
@@ -207,44 +271,11 @@ if __name__ == '__main__':
         model_string = 'model'
     # model_name = f'{model_string}_strides_3333'
     for model_name in model_names:
-        for patient_index in range(2, 3):
-            model_name = f'{model_name}{patient_index}'
+        for patient_index in range(8, 9):
+            model_name = f'{model_name}'
             for trained_mode in trained_modes:
                 for eval_mode in eval_modes:
-                    if trained_mode == 'untrained':
-                        if '/' in model_name:
-                            other_model_name = model_name.split('/')[1]
-                        else:
-                            other_model_name = model_name
-                        model_file = f'/models/saved_models/{model_name}/initial_{other_model_name}'
-                    else:
-                        model_file = f'/models/saved_models/{model_name}/best_model_split_0'
-
-                    output = f'{output_dir}/graphs/{model_name}/{eval_mode}/{trained_mode}/'
-                    Path(output).mkdir(parents=True, exist_ok=True)
-                    model = load_model(model_file)
-                    print(model_file)
-                    data = Data(home + f'/previous_work/P{patient_index}_data.mat', -1, False, 0, True)
-                    n_preds_per_input = get_output_shape(model, data.in_channels, 1200)[1]
-                    data.cut_input(input_time_length, n_preds_per_input, False)
-                    train_set, test_set = data.train_set, data.test_set
-
-                    if eval_mode == 'test':
-                        train_set = test_set
-                    wSizes = [1038, 628]
-                    corrcoef = get_corr_coef(train_set, model, cuda=cuda)
-
-                    X_reshaped = np.asarray(train_set.X)
-                    print(X_reshaped.shape)
-                    X_reshaped = reshape_Xs(wSizes[0], X_reshaped)
-                    # summary(model.float(), input_size=(data.in_channels, 683, 1))
-                    new_model = create_new_model(model, 'conv_classifier')
-                    with torch.no_grad():
-                        test_out = new_model(np_to_var(X_reshaped[:2]).double())
-                    new_model.eval()
-                    n_filters = test_out.shape[1]
-                    small_window = input_time_length - n_preds_per_input + 1
-                    # summary(new_model.float(), input_size=(data.in_channels, small_window, 1))
+                    corrcoef, new_model, X_reshaped, small_window, output = prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode)
 
                     print('Full window size')
 

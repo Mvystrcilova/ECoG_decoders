@@ -46,18 +46,20 @@ if __name__ == '__main__':
     print(cuda, home)
     set_random_seeds(seed=random_seed, cuda=cuda)
     cropped = True
-    low_pass = False
+    low_pass = True
     trajectory_index = args.variable
     num_of_folds = -1
     shift = False
-    high_pass = True
+    high_pass = False
+    high_pass_valid = True
+    train_lowpass = True
     learning_rate = 0.001
 
     if trajectory_index == 0:
-        model_string = f'hp_m_vel'
+        model_string = f'lpt_hpv_vel'
         variable = 'vel'
     else:
-        model_string = 'hp_m_absVel'
+        model_string = 'lpt_hpv_absVel'
         variable = 'absVel'
 
     model_name = ''
@@ -90,12 +92,14 @@ if __name__ == '__main__':
             else:
                 df = pandas.DataFrame()
         else:
-            if os.path.exists(f'{home}/outputs/{variable}_avg_best_results.csv'):
-                df = pandas.read_csv(f'{home}/outputs/{variable}_avg_best_results.csv', sep=';')
+            if os.path.exists(f'{home}/outputs/{variable}_avg_best_correlations.csv'):
+                df = pandas.read_csv(f'{home}/outputs/{variable}_avg_best_correlations.csv', sep=';')
+                print('exists')
             else:
                 df = pandas.DataFrame()
         print(starting_patient_index)
 
         train_nets(model_string, [x for x in range(starting_patient_index, 13)], dilation, kernel_size, lr=learning_rate,
                    num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,
-                   variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass=high_pass)
+                   variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass=high_pass,
+                   low_pass_train=train_lowpass, cropped=cropped, high_pass_valid=high_pass_valid)

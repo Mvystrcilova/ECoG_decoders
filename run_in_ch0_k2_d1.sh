@@ -7,7 +7,7 @@
 
 set -eux
 
-ch-run imgdir/diplomka_image sh <<EOF
+ch-run imgdir2/diplomka_image sh <<EOF
 set -eux
 cd /home/vystrcilova/ECoG_decoders
 python3 training.py --kernel_size 2 2 2 2 --dilations 1 1 1 1 --variable 0 --starting_patient_index 1

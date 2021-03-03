@@ -42,16 +42,18 @@ if __name__ == '__main__':
     cropped = True
     num_of_folds = -1
     trajectory_index = args.variable
-    kernel_index = 2
-    learning_rate = 0.01
+    learning_rate = 0.001
     low_pass = False
     shift = False
+    high_pass = False
+    high_pass_valid = False
+    add_padding = False
 
     if trajectory_index == 0:
-        model_string = f'exp_m_vel'
+        model_string = f'p_vel'
         variable = 'vel'
     else:
-        model_string = 'm_absVel'
+        model_string = 'p_absVel'
         variable = 'absVel'
 
     model_name = ''
@@ -85,13 +87,11 @@ if __name__ == '__main__':
             else:
                 df = pandas.DataFrame()
         else:
-            if os.path.exists(f'{home}/outputs/{variable}_avg_best_results.csv'):
-                df = pandas.read_csv(f'{home}/outputs/{variable}_avg_best_results.csv', sep=';', index_col=0)
-            else:
-                df = pandas.DataFrame()
+            df = pandas.DataFrame()
         print(starting_patient_index)
 
         train_nets(model_string, [x for x in range(starting_patient_index, 13)], dilation, kernel_size,
                    lr=learning_rate,
                    num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,
-                   variable=variable, result_df=df, max_train_epochs=max_train_epochs)
+                   variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass=high_pass,
+                   high_pass_valid=high_pass_valid, padding=add_padding, cropped=cropped)

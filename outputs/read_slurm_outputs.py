@@ -6,7 +6,7 @@ from global_config import home
 def get_results(file, starting_patient):
     f = open(file, 'r')
     lines = f.readlines()
-    patients = {str(x):[] for x in range(starting_patient, 13)}
+    patients = {str(x): [] for x in range(starting_patient, 13)}
     for line in lines:
         words = line.split(' ')
         if (len(words) == 2) and (words[0] in list(patients.keys())):
@@ -15,7 +15,7 @@ def get_results(file, starting_patient):
 
 
 if __name__ == '__main__':
-    patients = get_results(f'{home}/outputs/performance/slurm-7401.out', 9)
+    patients = get_results(f'{home}/outputs/performance/slurm-7401.out', 1)
     print(patients)
     df = pandas.read_csv(f'{home}/outputs/performance/m_vel_k_3333/vel_performance.csv', sep=';', index_col=0)
     for patient, values in patients.items():

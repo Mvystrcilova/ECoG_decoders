@@ -2,7 +2,6 @@ import pandas
 import matplotlib.pyplot as plt
 from global_config import home
 import numpy
-from results.performance_visualization import plot_df_boxplot
 
 
 def get_df_correlations(df):

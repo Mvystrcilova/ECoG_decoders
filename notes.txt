@@ -28,43 +28,150 @@ Kernel size 3, trajectory index 1: 7431 --> 7448 -- 7458 - Done
 
 LR 0.01
 
-Dilations [None]
-
-Kernel size 1, trajectory index 0: - 7476
-Kernel size 1, trajectory index 1:
-Kernel size 2, trajectory index 0: - 7477
-Kernel size 2, trajectory index 1:
-Kernel size 3, trajectory index 0: - 7478
-Kernel size 3, trajectory index 1:
-
-Dilations [1,1,1,1]
-
-Kernel size 1, trajectory index 0: - 7485
-Kernel size 1, trajectory index 1:
-Kernel size 2, trajectory index 0: - 7484
-Kernel size 2, trajectory index 1:
-Kernel size 3, trajectory index 0: - 7483
-Kernel size 3, trajectory index 1:
-
-Dilations [2, 4, 8, 16]
-
-Kernel size 1, trajectory index 0: - 7480
-Kernel size 1, trajectory index 1:
-Kernel size 2, trajectory index 0: - 7481
-Kernel size 2, trajectory index 1:
-Kernel size 3, trajectory index 0: - 7482
-Kernel size 3, trajectory index 1:
-
-
-Shifted
+HP Shifted2
 Kernel size 1
-trajectory index 0: 7802 -- 8176
-trajectory_index 1: 7803 -- 8175
+trajectory index 0: 8758
+trajectory_index 1: 8757
 
 Kernel size 2
-trajectory index 0: 7805 -- 8173
-trajectory_index 1: 7804 -- 8174
+trajectory index 0: 8754
+trajectory_index 1: 8756
 
 Kernel size 3
-trajectory index 0: 7807 -- 8172
-trajectory_index 1: 7808 -- 8171
+trajectory index 0: 8753
+trajectory_index 1: 8
+
+Kernel size 4
+trajectory index 0: 8750
+trajectory index 1: 8751
+
+
+Shifted2
+Kernel size 1
+trajectory index 0: 8685
+trajectory_index 1: 8686
+
+Kernel size 2
+trajectory index 0: 8688
+trajectory_index 1: 8687
+
+Kernel size 3
+trajectory index 0: 8689
+trajectory_index 1: 8690
+
+Kernel size 4
+trajectory index 0: 8692
+trajectory index 1: 8691
+
+
+Low pass performance on full data training
+Kernel size 1
+trajectory index 0: 8987 9076
+trajectory_index 1: 8991
+
+Kernel size 2
+trajectory index 0: 8988
+trajectory_index 1: 8992
+
+Kernel size 3
+trajectory index 0: 8989
+trajectory_index 1: 8993
+
+Kernel size 4
+trajectory index 0: 8990
+trajectory index 1: 8994
+
+
+Shifted low pass performance on full data training
+Kernel size 1
+trajectory index 0: 8999
+trajectory_index 1: 9003
+
+Kernel size 2
+trajectory index 0: 9000
+trajectory_index 1: 9004
+
+Kernel size 3
+trajectory index 0: 9001
+trajectory_index 1: 9005
+
+Kernel size 4
+trajectory index 0: 9002
+trajectory index 1: 9006
+
+
+
+high pass performance on full data training
+Kernel size 1
+trajectory index 0: 9152
+trajectory_index 1: 9156
+
+Kernel size 2
+trajectory index 0: 9153
+trajectory_index 1: 9186
+
+Kernel size 3
+trajectory index 0: 9154
+trajectory_index 1: 9185
+
+Kernel size 4
+trajectory index 0: 9198
+trajectory index 1: 9159
+
+
+shifted high pass performance on full data training
+Kernel size 1
+trajectory index 0: 9160
+trajectory_index 1: 9165
+
+Kernel size 2
+trajectory index 0: 9161
+trajectory_index 1: 9166
+
+Kernel size 3
+trajectory index 0: 9162
+trajectory_index 1: 9167
+
+Kernel size 4
+trajectory index 0: 9163
+trajectory index 1: 9164
+
+
+low-pass training high-pass validation:
+
+[vystrcilova@gpulab ECoG_decoders]$ sbatch run_in_ch0_k1_hp.sh
+Submitted batch job 9537
+[vystrcilova@gpulab ECoG_decoders]$ sbatch run_in_ch0_k2_hp.sh
+Submitted batch job 9538
+[vystrcilova@gpulab ECoG_decoders]$ sbatch run_in_ch0_k3_hp.sh
+Submitted batch job 9539
+[vystrcilova@gpulab ECoG_decoders]$ sbatch run_in_ch0_k4_hp.sh
+Submitted batch job 9540
+[vystrcilova@gpulab ECoG_decoders]$ sbatch run_in_ch1_k1_hp.sh
+Submitted batch job 9541
+[vystrcilova@gpulab ECoG_decoders]$ sbatch run_in_ch1_k2_hp.sh
+Submitted batch job 9542
+[vystrcilova@gpulab ECoG_decoders]$ sbatch run_in_ch1_k3_hp.sh
+Submitted batch job 9543
+[vystrcilova@gpulab ECoG_decoders]$ sbatch run_in_ch1_k4_hp.sh
+Submitted batch job 9544
+[vystrcilova@gpulab ECoG_decoders]$ scancel 9541
+[vystrcilova@gpulab ECoG_decoders]$ sbatch run_in_ch1_k1_hp.sh
+Submitted batch job 9545
+
+
+Kernel size 1
+trajectory index 0: 9160
+trajectory_index 1: 9165
+
+Kernel size 2
+trajectory index 0: 9161
+trajectory_index 1: 9166
+
+Kernel size 3
+trajectory index 0: 9162
+trajectory_index 1: 9167
+
+Kernel size 4
+trajectory index 0: 9163
+trajectory index 1: 9164

@@ -8,14 +8,23 @@ from global_config import home, output_dir, interpreted_model_name, eval_mode, t
 
 
 def get_corr_coef(dataset, model):
+    len = int(dataset.X.shape[0]/2)
+    print(len)
     with torch.no_grad():
         if cuda:
-            outs = model(np_to_var(dataset.X).double().cuda())
+            outs1 = model(np_to_var(dataset.X[:len]).double().cuda())
+            outs2 = model(np_to_var(dataset.X[len:]).double().cuda())
         else:
-            outs =  model(np_to_var(dataset.X).double())
+            outs = model(np_to_var(dataset.X).double())
 
     all_y = np.array(dataset.y)
-    preds = var_to_np(outs)
+    if cuda:
+        preds1 = var_to_np(outs1)
+        preds2 = var_to_np(outs2)
+        preds = np.concatenate([preds1, preds2])
+        print(preds.shape)
+    else:
+        preds = var_to_np(outs)
 
     preds_flat = np.concatenate(preds)
     y_flat = np.concatenate(all_y[:, -preds.shape[1]:])
@@ -64,9 +73,12 @@ def get_outs_shape(outs_shape, outs):
         return torch.mean(outs[:, :, outs_shape, ])
 
 
-def plot_correlation(batch_X, new_model, coef, output_file, outs_shape=None, setname=''):
+def get_outs(batch_X, new_model, outs_shape=None, grad_type='amps'):
     iffted, amps_th, phases_th = calculate_phase_and_amps(batch_X)
-    outs = new_model(iffted.double())
+    if cuda:
+        outs = new_model(iffted.double().cuda())
+    else:
+        outs = new_model(iffted.double())
 
     assert outs.shape[1] == 1
     if outs_shape is not None:
@@ -75,6 +87,15 @@ def plot_correlation(batch_X, new_model, coef, output_file, outs_shape=None, set
         mean_out = torch.mean(outs)
     mean_out.backward(retain_graph=True)
     amp_grads = var_to_np(amps_th.grad).squeeze(-1)
+    phase_grads = var_to_np(phases_th.grad).squeeze(-1)
+    if grad_type == 'amps':
+        return amp_grads, outs
+    else:
+        return phase_grads, outs
+
+
+def plot_correlation(batch_X, new_model, coef, output_file, outs_shape=None, setname=''):
+    amp_grads, outs = get_outs(batch_X, new_model, outs_shape)
     plot_gradients(batch_X, np.mean(amp_grads, axis=(0, 1)), corrcoef=coef, wsize=setname, output_file=output_file)
     plot_gradients(batch_X, np.mean(np.abs(amp_grads), axis=(0, 1)), coef, title_prefix='Absolute_', wsize=setname,
                    output_file=output_file)
@@ -87,9 +108,9 @@ def plot_gradients(batch_X, y, corrcoef, output_file, title_prefix = '', setname
     plt.axhline(y=0, color='black')
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Gradient')
-    plt.title("{:s} {:s}Amplitude Gradients (Corr {:.2f}%, {})".format(title_prefix, setname, corrcoef * 100, wsize))
+    plt.title("{:s} {:s}Amplitude Gradients (Corr {:.2f}, {})".format(title_prefix, setname, corrcoef * 100, wsize))
     plt.tight_layout()
-    plt.savefig(f'{output_file}/{title_prefix}Amplitude_Gradients_corr{setname}%_{wsize}.png')
+    plt.savefig(f'{output_file}/{title_prefix} Amplitude_Gradients_corr{setname}_{wsize}.png')
     plt.show()
 
     plt.close(fig)

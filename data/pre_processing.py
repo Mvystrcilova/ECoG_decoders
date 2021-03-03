@@ -11,6 +11,36 @@ def read_mat_file(mat_file):
     return data
 
 
+def get_num_of_channels(mat_file):
+    data = read_mat_file(mat_file)
+    session = data.D[0]
+    return session[0].ieeg.shape[1]
+
+
+def band_pass_data(Xs, ys, order=3, cut_off_frequency=40, btype='low'):
+    filter = signal.butter(order, cut_off_frequency, btype=btype, output='sos', fs=250)
+    print(Xs[0][:, 0].shape)
+    prev_signal = abs(np.fft.rfft(Xs[0][:, 0], n=250))
+    bandpassed_x = [signal.sosfilt(filter, x, axis=0) for x in Xs]
+    later_signal = abs(np.fft.rfft(bandpassed_x[0][:, 0], n=250))
+    # plt.xscale('log')
+    # plt.xlabel('frequency [Hz]')
+    # plt.ylabel('|amplitude|')
+    # plt.plot(prev_signal)
+    # plt.show()
+
+    # plt.xscale('log')
+    # plt.xlabel('frequency [Hz]')
+    # plt.ylabel('|amplitude|')
+    # plt.plot(later_signal)
+    # plt.show()
+
+    return bandpassed_x, ys
+    # plt.plot(np.arange(0, len(Xs[0][:, 0][:1000])), Xs[0][:, 0][:1000], label='original')
+    # plt.plot(np.arange(0, len(bandpassed_x[0][:, 0][:1000])), bandpassed_x[0][:, 0][:1000], label='low-passed')
+    # plt.show()
+
+
 class MyDataset:
     def __init__(self, X, y):
         self.X = X
@@ -18,18 +48,32 @@ class MyDataset:
 
 
 class Data:
-    def __init__(self, mat_file, num_of_folds, low_pass, trajectory_index, shift_data=False, high_pass=False):
+    def __init__(self, mat_file, num_of_folds, low_pass, trajectory_index, shift_data=False, high_pass=False,
+                 valid_high_pass=False, shift_by=0, low_pass_training=False):
         self.data = read_mat_file(mat_file)
-        self.low_pass, self.high_pass = low_pass, high_pass
+        self.motor_channels, self.non_motor_channels = None, None
+        self.low_pass, self.high_pass, self.valid_high_pass, self.low_pass_training = low_pass, high_pass, valid_high_pass, low_pass_training
         self.shift_data = shift_data
+        self.shift_by = shift_by
         self.band_passed_dataset = None
         self.num_of_folds = num_of_folds
         self.datasets = self.create_datasets(trajectory_index=trajectory_index)
         self.train_set, self.valid_set, self.test_set = self.split_data()
-        if self.low_pass:
+        if self.low_pass or self.low_pass_training:
             self.low_pass_train, self.low_pass_valid, self.low_pass_test = self.split_data(self.band_passed_dataset)
+        if self.low_pass:
+            self.test_set = self.low_pass_test
+
+        if self.low_pass_training:
+            self.train_set = self.low_pass_train
+
         if self.high_pass:
             self.train_set, self.valid_set, self.test_set = self.split_data(self.band_passed_dataset)
+        if self.valid_high_pass:
+            self.high_pass_train, self.high_pass_valid, self.high_pass_test = self.split_data(self.high_passed_dataset)
+            self.test_set = self.high_pass_test
+        if self.low_pass_training:
+            self.train_set, self.low_pass_valid, self.low_pass_test = self.split_data(self.band_passed_dataset)
         self.in_channels = self.train_set.X[0].shape[1]
         self.n_classes = len(self.train_set.y[0].shape)
         self.fold_number = 0
@@ -40,44 +84,30 @@ class Data:
     def create_datasets(self, trajectory_index=0):
         sessions = self.data.D
         if self.shift_data:
-            Xs = [session[0].ieeg[600:] for session in sessions]
-            ys = [session[0].traj[:-600, trajectory_index] for session in sessions]
+            Xs = [session[0].ieeg[self.shift_by:] for session in sessions]
+            ys = [session[0].traj[:-self.shift_by, trajectory_index] for session in sessions]
         else:
             Xs = [session[0].ieeg[:] for session in sessions]
             ys = [session[0].traj[:, trajectory_index] for session in sessions]
-        # ys = [session[0].traj for session in sessions]
+
         print(len(Xs), len(ys))
+
+        self.motor_channels = self.data.H.selCh_D_MTR - 1
+        self.non_motor_channels = self.data.H.selCh_D_CTR - 1
+
         if self.num_of_folds != -1:
             self.num_of_folds = len(Xs)
         dataset = Dataset(Xs, ys)
         if self.low_pass:
-            self.band_pass_data(Xs, ys, 3, 40, 'low')
+            X, y = band_pass_data(Xs, ys, 3, 40, 'low')
+            self.band_passed_dataset = Dataset(X, y)
         elif self.high_pass:
-            self.band_pass_data(Xs, ys, 3, 60, 'hp')
+            X, y = band_pass_data(Xs, ys, 3, 60, 'hp')
+            self.band_passed_dataset = Dataset(X, y)
+        if self.valid_high_pass:
+            X, y = band_pass_data(Xs, ys, 3, 60, 'hp')
+            self.high_passed_dataset = Dataset(X, y)
         return dataset
-
-    def band_pass_data(self, Xs, ys, order=3, cut_off_frequency=40, btype='low'):
-        filter = signal.butter(order, cut_off_frequency, btype=btype, output='sos', fs=250)
-        print(Xs[0][:, 0].shape)
-        prev_signal = abs(np.fft.rfft(Xs[0][:, 0], n=250))
-        bandpassed_x = [signal.sosfilt(filter, x, axis=0) for x in Xs]
-        later_signal = abs(np.fft.rfft(bandpassed_x[0][:, 0], n=250))
-        # plt.xscale('log')
-        plt.xlabel('frequency [Hz]')
-        plt.ylabel('|amplitude|')
-        plt.plot(prev_signal)
-        plt.show()
-
-        # plt.xscale('log')
-        plt.xlabel('frequency [Hz]')
-        plt.ylabel('|amplitude|')
-        plt.plot(later_signal)
-        plt.show()
-
-        self.band_passed_dataset = Dataset(bandpassed_x, ys)
-        plt.plot(np.arange(0, len(Xs[0][:, 0][:1000])), Xs[0][:, 0][:1000], label='original')
-        plt.plot(np.arange(0, len(bandpassed_x[0][:, 0][:1000])), bandpassed_x[0][:, 0][:1000], label='low-passed')
-        plt.show()
 
     def split_data(self, dataset=None):
         length = len(self.datasets.X)
@@ -108,24 +138,15 @@ class Data:
     def cv_split(self, X, y):
         length = len(X.X)
         if self.num_of_folds == -1:
-            index = int((length/100)*10)
+            # index = int((length/100)*10)
             index = -1
-            if not self.low_pass:
-                if index > -1:
-                    train_set = Dataset(X.X[:-index], y[:-index])
-                    valid_set = Dataset(X.X[-index:], y[-index:])
-                else:
-                    train_set = Dataset(X.X[:], y[:])
-                    valid_set = self.test_set
-                return train_set, valid_set
+            if index > -1:
+                train_set = Dataset(X.X[:-index], y[:-index])
+                valid_set = Dataset(X.X[-index:], y[-index:])
             else:
-                if index > -1:
-                    train_set = Dataset(X.X[:-index], y[:-index])
-                    valid_set = Dataset(self.low_pass_train.X[-index:], self.low_pass_train.y[-index:])
-                else:
-                    train_set = Dataset(X.X[:], y[:])
-                    valid_set = self.low_pass_test
-                return train_set, valid_set
+                train_set = Dataset(X.X[:], y[:])
+                valid_set = self.test_set
+            return train_set, valid_set
 
         fold_length = length / self.num_of_folds
 
@@ -167,6 +188,23 @@ class Data:
 
         return validation_set
 
+    def get_certain_channels(self, dataset, motor=True):
+        if motor:
+            self.motor_channels = self.motor_channels.astype(int)
+            new_set = np.copy(dataset.X)
+            mask = np.ones(self.in_channels, np.bool)
+            mask[self.motor_channels] = 0
+            new_set[:, mask, :, :] = 0
+            return Dataset(new_set, dataset.y)
+
+        else:
+            self.non_motor_channels = self.non_motor_channels.astype(int)
+            new_set = np.copy(dataset.X)
+            mask = np.ones(self.in_channels, np.bool)
+            mask[self.non_motor_channels] = 0
+            new_set[:, mask, :, :] = 0
+            return Dataset(new_set, dataset.y)
+
 
 def concatenate_batches(set, iterator, shuffle):
     complete_input = []
@@ -184,12 +222,32 @@ def concatenate_batches(set, iterator, shuffle):
 
 
 if __name__ == '__main__':
+    num_of_channels = get_num_of_channels('../previous_work/P1_data.mat')
     data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0)
-    shifted_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0,
-                        shift_data=True, high_pass=True)
-    print(data)
+    # shifted_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0,
+    #                     shift_data=True, high_pass=False)
     data.cut_input(1200, 519, False)
-    shifted_data.cut_input(1200, 519, False)
+    prev_trainset = data.train_set
+    motor_train_set = data.get_certain_channels(prev_trainset, True)
+    non_motor_train_set = data.get_certain_channels(prev_trainset, False)
+    print(motor_train_set.X.shape)
+    print(non_motor_train_set.X.shape)
+
+    # ax[2].plot(np.arange(0, 1200), shifted_data.datasets.X[0][:1200, 0], label= 'shifted Xs')
+    # ax[2].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200], label='shifted ys')
+    # ax[2].set_title('Shifted')
+    # plt.legend()
+    #
+    # data.cut_input(1200, 519, False)
+    # shifted_data.cut_input(1200, 519, False)
+    # ax[1].plot(np.arange(0, 1200), data.train_set.X[0, 0, :, 0], label='cut initial Xs')
+    # ax[1].plot(np.arange(1200-519, 1200), data.train_set.y[0, :], label='cut initial ys')
+    # plt.legend()
+    #
+    # ax[3].plot(np.arange(0, 1200), shifted_data.train_set.X[0, 0, :, 0], label='cut shifted Xs')
+    # ax[3].plot(np.arange(1200 - 519, 1200), shifted_data.train_set.y[0, :], label='cut shifted ys')
+    # plt.legend()
+    # plt.show()
     print(data)
 
 

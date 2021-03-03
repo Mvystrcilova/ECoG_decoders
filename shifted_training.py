@@ -51,12 +51,14 @@ if __name__ == '__main__':
     num_of_folds = -1
     shift = True
     learning_rate = 0.001
+    high_pass = False
+    high_pass_valid = True
 
     if trajectory_index == 0:
-        model_string = f'sm_vel'
+        model_string = f'lpv_sm_vel'
         variable = 'vel'
     else:
-        model_string = 'sm_absVel'
+        model_string = 'lpv_sm_absVel'
         variable = 'absVel'
 
     model_name = ''
@@ -89,12 +91,12 @@ if __name__ == '__main__':
             else:
                 df = pandas.DataFrame()
         else:
-            if os.path.exists(f'{home}/outputs/{variable}_avg_best_results.csv'):
-                df = pandas.read_csv(f'{home}/outputs/{variable}_avg_best_results.csv', sep=';')
+            if os.path.exists(f'{home}/outputs/{variable}_avg_best_correlations.csv'):
+                df = pandas.read_csv(f'{home}/outputs/{variable}_avg_best_correlations.csv', sep=';')
             else:
                 df = pandas.DataFrame()
         print(starting_patient_index)
 
         train_nets(model_string, [x for x in range(starting_patient_index, 13)], dilation, kernel_size, lr=learning_rate,
                    num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,
-                   variable=variable, result_df=df, max_train_epochs=max_train_epochs)
+                   variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass_valid=high_pass_valid)

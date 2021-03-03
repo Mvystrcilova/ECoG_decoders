@@ -6,3 +6,14 @@ logs
 *.png
 .idea
 previous_work
+models/*
+*.pt
+venv
+*.json
+*.txt
+outputs/graphs
+outputs/hp_graphs
+outputs/max_pool_graphs
+outputs/shifted_graphs
+*.npy
+
