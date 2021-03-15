@@ -46,27 +46,28 @@ if __name__ == '__main__':
     print(cuda, home)
     set_random_seeds(seed=random_seed, cuda=cuda)
     cropped = True
-    low_pass = False
+    low_pass = True
     trajectory_index = args.variable
     num_of_folds = -1
     shift = True
     learning_rate = 0.001
     high_pass = False
-    high_pass_valid = True
+    high_pass_valid = False
+    low_pass_train = False
 
     if trajectory_index == 0:
-        model_string = f'lpv_sm_vel'
+        model_string = f'sbp1_lp_sm_vel'
         variable = 'vel'
     else:
-        model_string = 'lpv_sm_absVel'
+        model_string = 'sbp1_lp_sm_absVel'
         variable = 'absVel'
 
     model_name = ''
 
     best_valid_correlations = []
 
-    dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
-
+    # dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
+    dilations = [None]
     if args.kernel_size == [1, 1, 1, 1]:
         dilations = [None]
 
@@ -99,4 +100,5 @@ if __name__ == '__main__':
 
         train_nets(model_string, [x for x in range(starting_patient_index, 13)], dilation, kernel_size, lr=learning_rate,
                    num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,
-                   variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass_valid=high_pass_valid)
+                   variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass_valid=high_pass_valid,
+                   low_pass_train=low_pass_train)

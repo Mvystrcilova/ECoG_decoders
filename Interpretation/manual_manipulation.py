@@ -206,10 +206,10 @@ cropped = False
 
 
 def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, model_file=None, shift=False, high_pass=False, trajectory_index=0,
-                          multi_layer=False, motor_channels=None):
+                          multi_layer=False, motor_channels=None, low_pass=False, shift_by=None):
     if model_file is None:
         if '/' in model_name:
-            other_model_name = model_name.split('/')[1] + f'_p_{patient_index}'
+            other_model_name = model_name.split('/')[2] + f'_p_{patient_index}'
         else:
             other_model_name = f'{model_name}_p_{patient_index}'
         if trained_mode == 'untrained':
@@ -227,8 +227,14 @@ def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, mo
     in_channels = get_num_of_channels(home + f'/previous_work/P{patient_index}_data.mat')
     n_preds_per_input = get_output_shape(model, in_channels, 1200)[1]
     small_window = input_time_length - n_preds_per_input + 1
-    data = Data(home + f'/previous_work/P{patient_index}_data.mat', -1, low_pass=False, trajectory_index=trajectory_index,
-                shift_data=shift, high_pass=high_pass, shift_by=int(small_window/2))
+
+    if shift_by is None:
+        shift_index = int(small_window / 2)
+    else:
+        shift_index = int((small_window / 2) - shift_by)
+
+    data = Data(home + f'/previous_work/P{patient_index}_data.mat', -1, low_pass=low_pass, trajectory_index=trajectory_index,
+                shift_data=shift, high_pass=high_pass, shift_by=shift_index)
 
     data.cut_input(input_time_length, n_preds_per_input, False)
     train_set, test_set = data.train_set, data.test_set

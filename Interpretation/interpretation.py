@@ -12,8 +12,8 @@ def get_corr_coef(dataset, model):
     print(len)
     with torch.no_grad():
         if cuda:
-            outs1 = model(np_to_var(dataset.X[:len]).double().cuda())
-            outs2 = model(np_to_var(dataset.X[len:]).double().cuda())
+            outs1 = model(np_to_var(dataset.X[:len]).cuda())
+            outs2 = model(np_to_var(dataset.X[len:]).cuda())
         else:
             outs = model(np_to_var(dataset.X).double())
 

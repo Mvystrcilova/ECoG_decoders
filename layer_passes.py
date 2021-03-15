@@ -87,7 +87,7 @@ def visualize_heatmap(arr, file, max_k):
     plt.plot([max_k, max_k], [0, 85], color='red', label='not_shifted')
     plt.plot([int(max_k/2), int(max_k/2)], [0, 85], color='green', label='shifted')
     plt.legend()
-
+    plt.xlabel('')
     plt.title(file)
     plt.tight_layout()
     plt.savefig(f'{home}/results/graphs/{file}.png')
@@ -102,16 +102,33 @@ def visualize_multiple_heat_maps(kernel, dilation):
     visualize_heatmap(arr, file, smaller_window)
 
 
-def get_num_of_predictions(kernels, dilations):
+def get_num_of_predictions(kernels, dilations, layer=None):
+    print('made for sbp0')
+    if layer == 'conv_spat':
+        return 1200 - 10 + 1, 0
     max_k, max_l = get_output_shape((input_time_length, input_channels), (10, 1), (1, 1), (1, 1),)
     max_k, max_l = get_output_shape((max_k, max_l), (1, input_channels), (1, 1), (1, 1),)
-    max_k, max_l = get_output_shape((max_k, max_l), (kernels[0], 1), (1, 1), (dilations[0], 1))
+    # max_k, max_l = get_output_shape((max_k, max_l), (kernels[0], 1), (1, 1), (dilations[0], 1))
+    max_k, max_l = get_output_shape((max_k, max_l), (kernels[0], 1), (1, 1), (1, 1))
+
     max_k, max_l = get_output_shape((max_k, max_l), (10, 1), (1, 1), (3, 1))
-    max_k, max_l = get_output_shape((max_k, max_l), (kernels[1], 1), (1, 1), (dilations[1], 1))
+    if layer == 'conv_2':
+        return max_k, max_l
+    # max_k, max_l = get_output_shape((max_k, max_l), (kernels[1], 1), (1, 1), (dilations[1], 1))
+    max_k, max_l = get_output_shape((max_k, max_l), (kernels[1], 1), (1, 1), (dilations[0], 1))
+
     max_k, max_l = get_output_shape((max_k, max_l), (10, 1), (1, 1), (9, 1))
-    max_k, max_l = get_output_shape((max_k, max_l), (kernels[2], 1), (1, 1), (dilations[2], 1))
+    if layer == 'conv_3':
+        return max_k, max_l
+    # max_k, max_l = get_output_shape((max_k, max_l), (kernels[2], 1), (1, 1), (dilations[2], 1))
+    max_k, max_l = get_output_shape((max_k, max_l), (kernels[2], 1), (1, 1), (dilations[1], 1))
+
     max_k, max_l = get_output_shape((max_k, max_l), (10, 1), (1, 1), (27, 1))
-    max_k, max_l = get_output_shape((max_k, max_l), (kernels[3], 1), (1, 1), (dilations[3], 1))
+    if layer == 'conv_4':
+        return max_k, max_l
+    # max_k, max_l = get_output_shape((max_k, max_l), (kernels[3], 1), (1, 1), (dilations[3], 1))
+    max_k, max_l = get_output_shape((max_k, max_l), (kernels[3], 1), (1, 1), (dilations[2], 1))
+
     max_k, max_l = get_output_shape((max_k, max_l), (2, 1), (1, 1), (81, 1))
     return max_k, max_l
 
@@ -119,13 +136,15 @@ def get_num_of_predictions(kernels, dilations):
 def get_name_from_kd(kernels, dilations):
     d_name = ''.join([str(x) for x in dilations])
     k_name = ''.join([str(x) for x in kernels])
-    return f'rf_k_{k_name}_d_{d_name}_0.npy'
+    return f'rf_k_{k_name}_d_{d_name}_sbb_False_0.npy'
 
 
 def create_receptive_fields():
     initial_dict = get_initial_dict(input_time_length, num_of_channels=input_channels)
     for kernels in [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4]]:
+    # for kernels in [[3, 3, 3, 3]]:
         for dilations in [[1, 1, 1, 1], [2, 4, 8, 16], [3, 9, 27, 81]]:
+        # for dilations in [[3, 9, 27, 81]]:
             d_name = ''.join([str(x) for x in dilations])
             k_name = ''.join([str(x) for x in kernels])
 
@@ -136,14 +155,14 @@ def create_receptive_fields():
                                                                (max_k, max_l), False)
             print(max_k, max_l)
             second_layer_dict, max_k, max_l = convolution_pass(second_layer_dict, (kernels[0], 1), (1, 1),
-                                                               (dilations[0], 1), (max_k, max_l), True)
+                                                               (1, 1), (max_k, max_l), True)
             print(max_k, max_l)
             second_layer_dict, max_k, max_l = convolution_pass(second_layer_dict, (10, 1), (1, 1), (3, 1),
                                                                (max_k, max_l), False)
             print(max_k, max_l)
 
             second_layer_dict, max_k, max_l = convolution_pass(second_layer_dict, (kernels[1], 1), (1, 1),
-                                                               (dilations[1], 1), (max_k, max_l), True)
+                                                               (dilations[0], 1), (max_k, max_l), True)
             print(max_k, max_l)
 
             second_layer_dict, max_k, max_l = convolution_pass(second_layer_dict, (10, 1), (1, 1), (9, 1),
@@ -151,7 +170,7 @@ def create_receptive_fields():
             print(max_k, max_l)
 
             second_layer_dict, max_k, max_l = convolution_pass(second_layer_dict, (kernels[2], 1), (1, 1),
-                                                               (dilations[2], 1), (max_k, max_l), True)
+                                                               (dilations[1], 1), (max_k, max_l), True)
             print(max_k, max_l)
 
             second_layer_dict, max_k, max_l = convolution_pass(second_layer_dict, (10, 1), (1, 1), (27, 1),
@@ -159,21 +178,24 @@ def create_receptive_fields():
             print(max_k, max_l)
 
             second_layer_dict, max_k, max_l = convolution_pass(second_layer_dict, (kernels[3], 1), (1, 1),
-                                                               (dilations[3], 1), (max_k, max_l), True)
+                                                               (dilations[2], 1), (max_k, max_l), True)
             print(max_k, max_l)
 
             second_layer_dict, max_k, max_l = convolution_pass(second_layer_dict, (2, 1), (1, 1), (81, 1),
                                                                (max_k, max_l), False)
             print(max_k, max_l)
 
-            np.save(f'{home}/outputs/receptive_fields/rf_k_{k_name}_d_{d_name}_0.npy', second_layer_dict[0, 0])
-            np.save(f'{home}/outputs/receptive_fields/rf_k_{k_name}_d_{d_name}_600.npy',
+            np.save(f'{home}/outputs/receptive_fields/rf_k_{k_name}_d_{d_name}_sbb_False_0.npy', second_layer_dict[0, 0])
+            np.save(f'{home}/outputs/receptive_fields/rf_k_{k_name}_d_{d_name}_sbb_False_600.npy',
                     second_layer_dict[max_k - 1, 0])
 
             print('done', k_name, d_name)
 
 
 if __name__ == '__main__':
-    for kernel in [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4]]:
-        for dilation in [[1, 1, 1, 1], [2, 4, 8, 16], [3, 9, 27, 81]]:
-            visualize_multiple_heat_maps(kernel, dilation)
+    # for kernel in [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4]]:
+    # for kernel in [[3, 3, 3, 3]]:
+    #     for dilation in [[3, 9, 27, 81]]:
+            #     for dilation in [[1, 1, 1, 1], [2, 4, 8, 16], [3, 9, 27, 81]]:
+            # visualize_multiple_heat_maps(kernel, dilation)
+    create_receptive_fields()

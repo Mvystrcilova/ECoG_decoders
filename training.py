@@ -4,7 +4,7 @@ import os
 import pandas
 
 from Training.train import train_nets
-from global_config import home, random_seed, cuda
+from global_config import home, random_seed, cuda, get_model_name_from_kernel_and_dilation
 import torch
 from braindecode.util import set_random_seeds
 
@@ -44,54 +44,49 @@ if __name__ == '__main__':
     trajectory_index = args.variable
     learning_rate = 0.001
     low_pass = False
-    shift = False
-    high_pass = False
+    shift = True
+    high_pass = True
     high_pass_valid = False
     add_padding = False
+    low_pass_training = False
 
     if trajectory_index == 0:
-        model_string = f'p_vel'
+        model_string = f'sbp0_hp_m_vel'
         variable = 'vel'
     else:
-        model_string = 'p_absVel'
+        model_string = 'sbp0_hp_m_absVel'
         variable = 'absVel'
 
-    model_name = ''
-
     best_valid_correlations = []
-    dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
-
+    # dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
+    dilations = [None]
     if args.kernel_size == [1, 1, 1, 1]:
         dilations = [None]
+    # shifts7 = [-250, -225, -200, -175]
+    shifts6 = [-150, -125, -100, -75]
+    shifts2 = [-50, -25, 25, 0]
+    # shifts3 = [50, 75, 100, 125, 150]
+    # shifts4 = [175, 200, 225, 250]
+    # shifts8 = [150]
+    # shifts = shifts6 + shifts4 + shifts3 + shifts7 + shifts2
+    model_name = ''
     for dilation in dilations:
         best_valid_correlations = []
         print(dilation)
         kernel_size = args.kernel_size
         print(kernel_size)
-        model_name = ''.join([str(x) for x in kernel_size])
-
-        if dilation is not None:
-            dilations_name = ''.join(str(x) for x in dilation)
-            model_name = f'{model_name}_dilations_{dilations_name}'
+        model_name = get_model_name_from_kernel_and_dilation(kernel_size, dilation)
 
         starting_patient_index = args.starting_patient_index
-        if num_of_folds != -1:
-            if os.path.exists(
-                    f'{home}/outputs/performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv'):
-                df = pandas.read_csv(
-                    f'{home}/outputs/performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv',
-                    sep=';', index_col=0)
-                df = df.T.drop_duplicates().T
-                starting_patient_index = df.shape[1] + 1
-                print('exists')
-            else:
-                df = pandas.DataFrame()
-        else:
-            df = pandas.DataFrame()
-        print(starting_patient_index)
 
-        train_nets(model_string, [x for x in range(starting_patient_index, 13)], dilation, kernel_size,
-                   lr=learning_rate,
-                   num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,
-                   variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass=high_pass,
-                   high_pass_valid=high_pass_valid, padding=add_padding, cropped=cropped)
+        df = pandas.DataFrame()
+
+        print(starting_patient_index)
+        for s in shifts2:
+
+            train_nets(model_string, [x for x in range(starting_patient_index, 13)], dilation, kernel_size,
+                       lr=learning_rate,
+                       num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,
+                       variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass=high_pass,
+                       high_pass_valid=high_pass_valid, padding=add_padding, cropped=cropped,
+                       low_pass_train=low_pass_training, shift_by=s)

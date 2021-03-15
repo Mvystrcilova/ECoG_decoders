@@ -46,28 +46,28 @@ if __name__ == '__main__':
     print(cuda, home)
     set_random_seeds(seed=random_seed, cuda=cuda)
     cropped = True
-    low_pass = True
+    low_pass = False
     trajectory_index = args.variable
     num_of_folds = -1
-    shift = False
+    shift = True
     high_pass = False
     high_pass_valid = True
-    train_lowpass = True
+    train_lowpass = False
     learning_rate = 0.001
 
     if trajectory_index == 0:
-        model_string = f'lpt_hpv_vel'
+        model_string = f'sbp1_hpvs_m_vel'
         variable = 'vel'
     else:
-        model_string = 'lpt_hpv_absVel'
+        model_string = 'sbp1_hpvs_m_absVel'
         variable = 'absVel'
 
     model_name = ''
 
     best_valid_correlations = []
 
-    dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
-
+    # dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
+    dilations = [None]
     if args.kernel_size == [1, 1, 1, 1]:
         dilations = [None]
 

@@ -1,7 +1,7 @@
 torch~=1.7.1
 skorch~=0.9.0
 braindecode~=0.5
-matplotlib~=3.3.2
+matplotlib~=3.3.4
 numpy
 scipy
 pandas~=1.1.4

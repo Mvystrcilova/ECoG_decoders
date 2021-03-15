@@ -14,7 +14,7 @@ from Interpretation.interpretation import get_corr_coef
 from Training.CorrelationMonitor1D import CorrelationMonitor1D
 from data.OnePredictionData import OnePredictionData
 from data.pre_processing import Data, get_num_of_channels
-from global_config import home, input_time_length, cuda
+from global_config import home, input_time_length, cuda, get_model_name_from_kernel_and_dilation
 from models.Model import load_model, change_network_stride, Model, add_padding
 
 
@@ -37,7 +37,7 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
         kernel_sizes = [3, 3, 3, 3]
 
     model = Model(input_channels=input_channels, n_classes=1, input_time_length=input_time_length,
-                  final_conv_length=2, stride_before_pool=True)
+                  final_conv_length=2, stride_before_pool=False)
     model.make_regressor()
     if cuda:
         model.model = model.model.cuda()
@@ -48,16 +48,16 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
     if dilations is not None:
         dilations_name = ''.join(str(x) for x in dilations)
         model_name = f'{model_name}_dilations_{dilations_name}'
-
-    if conv_dilations is not None:
-        conv_dilations_name = ''.join(str(x) for x in conv_dilations)
-        model_name = f'{model_name}_conv_d_{conv_dilations_name}'
+    model_name = get_model_name_from_kernel_and_dilation(kernel_sizes, dilations)
+    # if conv_dilations is not None:
+    #     conv_dilations_name = ''.join(str(x) for x in conv_dilations)
+    #     model_name = f'{model_name}_conv_d_{conv_dilations_name}'
 
     changed_model = change_network_stride(model.model, kernel_sizes, dilations, remove_maxpool=False,
                                           change_conv_layers=conv_dilations is not None, conv_dilations=conv_dilations)
-    if padding:
-        changed_model = add_padding(changed_model, input_channels)
-
+    #     changed_model = add_padding(changed_model, input_channels)
+    print('Model not changing!')
+    # changed_model = model.model
     return model, changed_model, model_name
 
 
@@ -105,7 +105,7 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
                              callbacks=monitors, lr=lr, device=device, batch_size=32).initialize()
 
     torch.save(model.model,
-               home + f'/models/saved_models/{output_dir}/initial_{model_string}_k_{model_name}_p_{patient_index}')
+               home + f'/models/saved_models/{output_dir}/initial_{model_string}_{model_name}_p_{patient_index}')
     regressor.max_correlation = -1000
     if padding:
         regressor.fit(data.train_set[0], data.train_set[1])
@@ -123,14 +123,15 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
 
 def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_folds, trajectory_index, low_pass,
                shift, variable, result_df, max_train_epochs, high_pass=False, high_pass_valid=False,
-               padding=False, cropped=True, low_pass_train=False):
+               padding=False, cropped=True, low_pass_train=False, shift_by=None):
     best_valid_correlations = []
+
     for patient_index in patient_indices:
         input_channels = get_num_of_channels(home + f'/previous_work/P{patient_index}_data.mat')
         model, changed_model, model_name = get_model(input_channels, input_time_length,
                                                      dilations=dilation,
                                                      kernel_sizes=kernel_size, padding=padding)
-
+        small_window = 522
         if padding:
             data = OnePredictionData(home + f'/previous_work/P{patient_index}_data.mat', num_of_folds=num_of_folds,
                                      low_pass=low_pass, input_time_length=input_time_length,
@@ -139,13 +140,16 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
         else:
             n_preds_per_input = get_output_shape(changed_model, input_channels, input_time_length)[1]
             small_window = input_time_length - n_preds_per_input + 1
+            if shift_by is None:
+                shift_index = int(small_window / 2)
+            else:
+                shift_index = int((small_window/2) - shift_by)
             data = Data(home + f'/previous_work/P{patient_index}_data.mat', num_of_folds=num_of_folds,
                         low_pass=low_pass,
                         trajectory_index=trajectory_index, shift_data=shift, high_pass=high_pass,
-                        shift_by=int(small_window / 2),
+                        shift_by=int(shift_index),
                         valid_high_pass=high_pass_valid, low_pass_training=low_pass_train)
-
-        output_dir = f'lr_{lr}/{model_string}_k_{model_name}/{model_string}_k_{model_name}_p_{patient_index}'
+        output_dir = f'lr_{lr}/shift_{shift_by}/{model_string}_{model_name}/{model_string}_{model_name}_p_{patient_index}'
         correlation_monitor = CorrelationMonitor1D(input_time_length=input_time_length,
                                                    output_dir=output_dir)
         if cuda:
@@ -160,11 +164,15 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
             best_corr = train(data, dilation, kernel_size, lr, patient_index, model_string, correlation_monitor,
                               max_train_epochs=max_train_epochs, output_dir=output_dir, split=None, cropped=cropped,
                               padding=padding)
+            print('shift by:', shift_by)
             best_valid_correlations.append(best_corr)
             if len(best_valid_correlations) == 12:
+                Path(f'{home}/outputs/lr_{lr}/shift_{shift_by}/{model_string}_k_{model_name}/{model_string}_k_{model_name}').mkdir(
+                    parents=True,
+                    exist_ok=True)
                 result_df[f'{model_string}_k_{model_name}'] = best_valid_correlations
                 best_valid_correlations = []
-                result_df.to_csv(f'{home}/outputs/{variable}_avg_best_correlations.csv', sep=';')
+                result_df.to_csv(f'{home}/outputs/lr_{lr}/shift_{shift_by}/{model_string}_k_{model_name}/{model_string}_k_{model_name}/results.csv', sep=';')
 
         else:
             fold_corrs = []
@@ -174,10 +182,4 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
                                   max_train_epochs=max_train_epochs, cropped=cropped)
                 fold_corrs.append(best_corr)
             best_valid_correlations.append(fold_corrs)
-            patient_df = pandas.DataFrame()
-            patient_df[f'p_{patient_index}'] = best_valid_correlations
-            df = pandas.concat([patient_df, result_df], ignore_index=True, axis=1)
 
-            df.to_csv(
-                f'{home}/outputs/performance/lr_{lr}/{model_string}_k_{model_name}/{variable}_performance.csv',
-                sep=';')

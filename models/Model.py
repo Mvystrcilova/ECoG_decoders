@@ -71,6 +71,12 @@ def create_new_model(model, module_name, input_channels=None):
     return new_model
 
 
+def create_double_model(model1, model2):
+    new_model = nn.Sequential()
+
+
+
+
 def test_padding():
     m = nn.ZeroPad2d((0, 0, 0, 10))
     input = torch.randn(1, 1, 20, 1)
@@ -154,7 +160,7 @@ class Model:
         self.input_time_length = input_time_length
         self.final_conv_lenght = final_conv_length
         self.model = Deep4Net(in_chans=self.input_channels, n_classes=self.n_classes,
-                              input_window_samples=1000,
+                              input_window_samples=1200,
                               final_conv_length=self.final_conv_lenght,
                               stride_before_pool=stride_before_pool).train()
         # print(self.model)

@@ -3,11 +3,14 @@ import logging
 from pathlib import Path
 
 import matplotlib
+import scipy
 from braindecode.util import np_to_var, var_to_np
 
 from Interpretation.interpretation import calculate_phase_and_amps
 from Interpretation.manual_manipulation import prepare_for_gradients
 from global_config import output_dir, cuda, input_time_length, home
+from gradient_multigraphs import get_kernel_and_dilation_from_long_name
+from layer_passes import get_num_of_predictions
 
 log = logging.getLogger()
 log.setLevel('DEBUG')
@@ -26,27 +29,36 @@ import torch
 seaborn.set_style('darkgrid')
 
 
-def plot_all_module_gradients(titles, batch_X, gradients, gradient_stds, output_file):
-    fig, ax = plt.subplots(2, 2, sharey='row', figsize=(15, 11))
+def plot_all_module_gradients(titles, batch_X, gradients, output_file, shift_by):
+    fig, ax = plt.subplots(2, 2, sharey='row', figsize=(17, 12))
+    if shift_by is not None:
+        titles = [f'{title} Shifted by: {shift_by}' for title in titles]
+    # indices = [0, 1, 2, 3]
     indices = [(0, 0), (0, 1), (1, 0), (1, 1)]
     for i, gradient in enumerate(gradients[0]):
+        sem = np.mean(scipy.stats.sem(np.abs(gradient), axis=1), axis=0)
+        mch_sem = np.mean(scipy.stats.sem(np.abs(gradients[1][i]), axis=1), axis=0)
+        nch_sem = np.mean(scipy.stats.sem(np.abs(gradients[2][i]), axis=1), axis=0)
         y = np.mean(np.abs(gradient), axis=(0, 1))
         mch = np.mean(np.abs(gradients[1][i]), axis=(0, 1))
         nch = np.mean(np.abs(gradients[2][i]), axis=(0, 1))
         ax[indices[i]].plot(np.fft.rfftfreq(batch_X[i].shape[2], 1 / 250.0), y, color='steelblue', label='All channels')
+        ax[indices[i]].fill_between(np.fft.rfftfreq(batch_X[i].shape[2], 1 / 250.0), y - sem, y + sem, alpha=0.2, color='steelblue')
+
         ax[indices[i]].plot(np.fft.rfftfreq(batch_X[i].shape[2], 1 / 250.0), mch, color='limegreen',
                             label='Motor channels')
+        ax[indices[i]].fill_between(np.fft.rfftfreq(batch_X[i].shape[2], 1 / 250.0), mch - mch_sem, mch + mch_sem, alpha=0.2, color='limegreen')
+
         ax[indices[i]].plot(np.fft.rfftfreq(batch_X[i].shape[2], 1 / 250.0), nch, color='lightcoral',
                             label='Non-motor channels')
+        ax[indices[i]].fill_between(np.fft.rfftfreq(batch_X[i].shape[2], 1 / 250.0), nch - nch_sem, nch + nch_sem, color='lightcoral',
+                                    alpha=0.2)
 
-        ax[indices[i]].plot(np.fft.rfftfreq(batch_X[i].shape[2], 1 / 250.0), y - gradient_stds[i],
-                            color='lightsteelblue', label='All channel std')
-        ax[indices[i]].plot(np.fft.rfftfreq(batch_X[i].shape[2], 1 / 250.0), y + gradient_stds[i],
-                            color='lightsteelblue')
         ax[indices[i]].set_title(titles[i])
+
     plt.legend()
     plt.tight_layout()
-    plt.savefig(output_file)
+    # plt.savefig(output_file)
     plt.show()
 
 
@@ -124,32 +136,184 @@ def get_module_gradients(model, module_name, X_reshaped):
     return meaned_amp_grads, meaned_phase_grads, small_window
 
 
+def get_gradients_for_intermediate_layers(select_modules, prefix, file, shift, high_pass, trajectory_index, motor_channels,
+                                          low_pass, shift_by):
+    amp_gradient_dict = {module_name: [] for module_name in select_modules}
+    amp_gradient_dict_mch = {module_name: [] for module_name in select_modules}
+    amp_gradient_dict_nch = {module_name: [] for module_name in select_modules}
+
+    phase_gradient_dict_mch = {module_name: [] for module_name in select_modules}
+    phase_gradient_dict_nch = {module_name: [] for module_name in select_modules}
+    phase_gradient_dict = {module_name: [] for module_name in select_modules}
+
+    X_reshaped_list, X_reshaped_list_mch, X_reshaped_list_nch = [], [], []
+    for patient_index in range(1, 13):
+        print('prefix index', i)
+        model_name = f'{prefix}_{file}'
+        print(patient_index, model_name)
+        corrcoef, new_model, X_reshaped, small_window, _, motor_channel_indices, non_motor_channel_indices = prepare_for_gradients(
+            patient_index,
+            f'lr_0.001/shift_{shift_by}/{model_name}',
+            train_mode, eval_mode,
+            shift=shift,
+            high_pass=high_pass,
+            trajectory_index=trajectory_index,
+            multi_layer=True,
+            motor_channels=motor_channels, low_pass=low_pass, shift_by=shift_by)
+
+        # amp_grads_list, amp_grads_list_mch, amp_grads_list_nch = [], [], []
+        # phase_grads_list, phase_grads_list_mch, phase_grads_list_nch = [], [], []
+        # X_reshaped = X_reshaped[:, :, :small_window]
+        for j, module_name in enumerate(select_modules):
+            amp_grads, phase_grads, module_filters = get_module_gradients(new_model, module_name,
+                                                                          X_reshaped)
+            amp_grads_mch, phase_grads_mch = np.take(amp_grads, motor_channel_indices.astype(int),
+                                                     axis=1), np.take(phase_grads,
+                                                                      motor_channel_indices.astype(int),
+                                                                      axis=1)
+            amp_grads_nch, phase_grads_nch = np.take(amp_grads, non_motor_channel_indices.astype(int),
+                                                     axis=1), np.take(phase_grads,
+                                                                      non_motor_channel_indices.astype(
+                                                                          int), axis=1)
+
+            amp_gradient_dict[module_name].append(amp_grads)
+            amp_gradient_dict_mch[module_name].append(amp_grads_mch)
+            amp_gradient_dict_nch[module_name].append(amp_grads_nch)
+
+            phase_gradient_dict[module_name].append(phase_grads)
+            phase_gradient_dict_mch[module_name].append(phase_grads_mch)
+            phase_gradient_dict_nch[module_name].append(phase_grads_nch)
+
+            if len(X_reshaped_list) < 4:
+                X_reshaped_list.append(X_reshaped[:, :, :module_filters])
+
+    amp_grads_list, amp_grads_list_mch, amp_grads_list_nch = [], [], []
+    amp_grads_std = []
+    phase_grads_list, phase_grads_list_mch, phase_grads_list_nch = [], [], []
+    phase_grads_std = []
+    for module_name in select_modules:
+        amp_grads = np.concatenate(amp_gradient_dict[module_name], axis=1)
+        amp_grads_mch = np.concatenate(amp_gradient_dict_mch[module_name], axis=1)
+        amp_grads_nch = np.concatenate(amp_gradient_dict_nch[module_name], axis=1)
+        Path(f'{output_dir}/all_layer_gradients/{file}/shift_{shift_by}/{prefix}/phase/{module_name}/').mkdir(parents=True,
+                                                                                             exist_ok=True)
+        Path(f'{output_dir}/all_layer_gradients/{file}/shift_{shift_by}/{prefix}/amps/{module_name}/').mkdir(parents=True,
+                                                                                            exist_ok=True)
+
+        np.save(
+            f'{home}/outputs/all_layer_gradients/{file}/shift_{shift_by}/{prefix}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_ALLCH',
+            amp_grads)
+        np.save(
+            f'{home}/outputs/all_layer_gradients/{file}/shift_{shift_by}/{prefix}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_MCH',
+            amp_grads_mch)
+        np.save(
+            f'{home}/outputs/all_layer_gradients/{file}/shift_{shift_by}/{prefix}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_NCH',
+            amp_grads_nch)
+
+        print('concatenated grads shape:', amp_grads.shape)
+        phase_grads = np.concatenate(phase_gradient_dict[module_name], axis=1)
+        phase_grads_mch = np.concatenate(phase_gradient_dict_mch[module_name], axis=1)
+        phase_grads_nch = np.concatenate(phase_gradient_dict_nch[module_name], axis=1)
+
+        np.save(
+            f'{home}/outputs/all_layer_gradients/{file}/shift_{shift_by}/{prefix}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_ALLCH',
+            phase_grads)
+        np.save(
+            f'{home}/outputs/all_layer_gradients/{file}/shift_{shift_by}/{prefix}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_MCH',
+            phase_grads_mch)
+        np.save(
+            f'{home}/outputs/all_layer_gradients/{file}/shift_{shift_by}/{prefix}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_NCH',
+            phase_grads_nch)
+
+        amp_grads_list.append(amp_grads)
+        amp_grads_list_mch.append(amp_grads_mch)
+        amp_grads_list_nch.append(amp_grads_nch)
+        amp_grads_std.append(np.std(np.abs(amp_grads), axis=(0, 1)))
+
+        phase_grads_list.append(phase_grads)
+        phase_grads_std.append(np.std(np.abs(phase_grads), axis=(0, 1)))
+        phase_grads_list_mch.append(phase_grads_mch)
+        phase_grads_list_nch.append(phase_grads_nch)
+
+    return X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, amp_grads_std, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch, phase_grads_std
+
+
+def get_gradients_for_intermediate_layers_from_np_arrays(file, prefix, modules, train_mode, eval_mode, shift_by=None):
+    amp_grads, amp_grads_mch, amp_grads_nch, phase_grads, phase_grads_mch, phase_grads_nch = [], [], [], [], [], []
+    kernel_size, dilation = get_kernel_and_dilation_from_long_name(file)
+    X_reshaped_list = []
+    for module_name in modules:
+        if shift_by is not None:
+            shift_by_str = f'/shift_{shift_by}/'
+        else:
+            shift_by_str = ''
+        max_k, max_l = get_num_of_predictions(kernel_size, dilation, layer=module_name)
+        X_reshaped_list.append(np.zeros([1, 1, input_time_length - max_k + 1, 1]))
+        print(module_name, prefix)
+        amp_grads.append(np.load(
+            f'{home}/outputs/all_layer_gradients/{file}/{shift_by_str}{prefix}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_ALLCH.npy'))
+        amp_grads_mch.append(np.load(
+            f'{home}/outputs/all_layer_gradients/{file}/{shift_by_str}{prefix}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_MCH.npy'))
+        amp_grads_nch.append(np.load(
+            f'{home}/outputs/all_layer_gradients/{file}/{shift_by_str}{prefix}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_NCH.npy'))
+        phase_grads.append(np.load(
+            f'{home}/outputs/all_layer_gradients/{file}/{shift_by_str}{prefix}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_ALLCH.npy'))
+        phase_grads_mch.append(np.load(
+            f'{home}/outputs/all_layer_gradients/{file}/{shift_by_str}{prefix}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_MCH.npy'))
+        phase_grads_nch.append(np.load(
+            f'{home}/outputs/all_layer_gradients/{file}/{shift_by_str}{prefix}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_NCH.npy'))
+    return X_reshaped_list, amp_grads, amp_grads_mch, amp_grads_nch, phase_grads, phase_grads_mch, phase_grads_nch
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--variable', default='vel', type=str)
 parser.add_argument('--channels', default=None, type=str)
 
 if __name__ == '__main__':
-    select_modules = ['conv_2', 'conv_3', 'conv_4', 'conv_classifier']
+    select_modules = ['conv_4', 'conv_classifier']
+    select_modules = ['conv_4']
     args = parser.parse_args()
+    print(cuda)
     variable = args.variable
     if variable == 'vel':
         trajectory_index = 0
     else:
         trajectory_index = 1
 
-    files = [f'{variable}_k_3333', f'{variable}_k_1111', f'{variable}_k_2222_dilations_1111', f'{variable}_k_2222',
-             f'{variable}_k_2222_dilations_24816']
+    files = [f'{variable}_k_3333', f'{variable}_k_2222_dilations_1111',
+             f'{variable}_k_2222_dilations_24816', f'{variable}_k_1111', f'{variable}_k_4444',
+             f'{variable}_k_2222', f'{variable}_k_3333_dilations_24816']
     files2 = [f'{variable}_k_3333_dilations_1111',
-              f'{variable}_k_3333_dilations_24816', f'{variable}_k_4444', f'{variable}_k_4444_dilations_1111',
+               f'{variable}_k_4444_dilations_1111',
               f'{variable}_k_4444_dilations_24816']
-
+    files = [f'{variable}_k3_d3']
+    # files = files + files2
+    # files = [f'{variable}_k_1111']
     # files = [f'{variable}_k_4444_dilations_24816']
-    prefixes = ['m', 's2_m', 'hp_m', 'hp_sm2']
-
-    titles = ['Initial performance', 'Shifted performance', 'Initial high-pass performance',
-              'Shifted high-pass performance']
-    shift = [False, True, False, True]
+    # prefixes = ['m', 's2_m', 'hp_m', 'hp_sm2']
+    # prefixes = ['sbp0_m', 'sbp0_sm', 'sbp0_hp', 'sbp0_hps']
+    prefixes = ['sbp0_m']
+    shifts6 = [-250, -225, -200, -175, -150, -125]
+    shifts = [-100, -75, -50]
+    shifts2 = [-25, 25, 50, 75]
+    shifts3 = [100, 125, 150]
+    shifts4 = [175, 200, 225]
+    shifts5 = [250]
+    shifts = shifts + shifts2 + shifts3 + shifts4 + shifts5
+    shifts = [0, 25]
+    # prefixes = ['hp_m']
+    # prefixes = ['lp_m', 'lp_sm']
+    # files = [f'{variable}_k_3333', f'{variable}_k_1111', f'{variable}_k_4444', f'{variable}_k_2222', f'{variable}_k_3333_dilations_24816',]
+    # titles = ['Initial low-pass validation performance', 'Shifted low-pass validation performance']
+    # titles = ['Initial setting', 'Shifted setting','Initial high-pass setting',
+    #           'Shifted high-pass setting']
+    # titles = ['Initial high-pass setting']
+    shift = [True, True, False, True]
+    # shift = [False]
+    # high_pass = [True]
     high_pass = [False, False, True, True]
+    # high_pass = [False, False]
+    low_pass = [False, False, False, False]
+    # low_pass = [True, True]
 
     if args.channels is not None:
         if args.channels == 'MCH':
@@ -169,115 +333,26 @@ if __name__ == '__main__':
             m_ch_note = '_NCH'
     else:
         m_ch_note = ''
-    for file in files2:
-        for i, prefix in enumerate(prefixes):
-            for train_mode in trained_modes:
-                for eval_mode in eval_modes:
-                    output_amp = f'{output_dir}/all_layer_grads/{file}/{prefix}/amps_avg_{prefix}_{file}_{train_mode}_{eval_mode}{m_ch_note}_sw.png'
-                    output_phase = f'{output_dir}/all_layer_grads/{file}/{prefix}/phase_avg_{prefix}_{file}_{train_mode}_{eval_mode}{m_ch_note}_sw.png'
+    print(prefixes)
+    for file in files:
+        for s in shifts:
+            for i, prefix in enumerate(prefixes):
+                for train_mode in trained_modes:
+                    for eval_mode in eval_modes:
+                        output_amp = f'{output_dir}/all_layer_grads/{file}/shift_{s}/{prefix}/amps_avg_{prefix}_{file}_{train_mode}_{eval_mode}{m_ch_note}_sw.png'
+                        output_phase = f'{output_dir}/all_layer_grads/{file}/shift_{s}/{prefix}/phase_avg_{prefix}_{file}_{train_mode}_{eval_mode}{m_ch_note}_sw.png'
 
-                    Path(f'{output_dir}/all_layer_grads/{file}/{prefix}').mkdir(parents=True, exist_ok=True)
+                        Path(f'{output_dir}/all_layer_grads/{file}/shift_{s}/{prefix}').mkdir(parents=True, exist_ok=True)
+                        X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, amp_grads_std, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch, phase_grads_std = get_gradients_for_intermediate_layers(select_modules, prefix, file=file, shift=shift[i], high_pass=high_pass[i], trajectory_index=trajectory_index, motor_channels=motor_channels, low_pass=low_pass[i], shift_by=s)
+                        # X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch = get_gradients_for_intermediate_layers_from_np_arrays(file, prefix, modules=select_modules, train_mode=train_mode, eval_mode=eval_mode, shift_by=s)
+                        print(file)
+                        print('shift:', s)
+                        # plot_all_module_gradients(select_modules, X_reshaped_list,
+                        #                           [amp_grads_list, amp_grads_list_mch, amp_grads_list_nch],
+                        #                           output_file=output_amp, shift_by=s)
+                        #
 
-                    amp_gradient_dict = {module_name: [] for module_name in select_modules}
-                    amp_gradient_dict_mch = {module_name: [] for module_name in select_modules}
-                    amp_gradient_dict_nch = {module_name: [] for module_name in select_modules}
-
-                    phase_gradient_dict_mch = {module_name: [] for module_name in select_modules}
-                    phase_gradient_dict_nch = {module_name: [] for module_name in select_modules}
-                    phase_gradient_dict = {module_name: [] for module_name in select_modules}
-
-                    X_reshaped_list, X_reshaped_list_mch, X_reshaped_list_nch = [], [], []
-                    for patient_index in range(1, 13):
-                        model_name = f'{prefix}_{file}'
-                        print(patient_index, model_name)
-                        corrcoef, new_model, X_reshaped, small_window, _, motor_channel_indices, non_motor_channel_indices = prepare_for_gradients(
-                            patient_index,
-                            f'lr_0.001/{model_name}',
-                            train_mode, eval_mode,
-                            shift=shift[i],
-                            high_pass=high_pass[i],
-                            trajectory_index=trajectory_index,
-                            multi_layer=True,
-                            motor_channels=motor_channels)
-
-                        amp_grads_list, amp_grads_list_mch, amp_grads_list_nch = [], [], []
-                        phase_grads_list, phase_grads_list_mch, phase_grads_list_nch = [], [], []
-                        # X_reshaped = X_reshaped[:, :, :small_window]
-                        for i, module_name in enumerate(select_modules):
-                            amp_grads, phase_grads, module_filters = get_module_gradients(new_model, module_name,
-                                                                                          X_reshaped)
-                            amp_grads_mch, phase_grads_mch = np.take(amp_grads, motor_channel_indices.astype(int),
-                                                                     axis=1), np.take(phase_grads,
-                                                                                      motor_channel_indices.astype(int),
-                                                                                      axis=1)
-                            amp_grads_nch, phase_grads_nch = np.take(amp_grads, non_motor_channel_indices.astype(int),
-                                                                     axis=1), np.take(phase_grads,
-                                                                                      non_motor_channel_indices.astype(
-                                                                                          int), axis=1)
-
-                            amp_gradient_dict[module_name].append(amp_grads)
-                            amp_gradient_dict_mch[module_name].append(amp_grads_mch)
-                            amp_gradient_dict_nch[module_name].append(amp_grads_nch)
-
-                            phase_gradient_dict[module_name].append(phase_grads)
-                            phase_gradient_dict_mch[module_name].append(phase_grads_mch)
-                            phase_gradient_dict_nch[module_name].append(phase_grads_nch)
-
-                            if len(X_reshaped_list) < 4:
-                                X_reshaped_list.append(X_reshaped[:, :, :module_filters])
-
-                    amp_grads_list, amp_grads_list_mch, amp_grads_list_nch = [], [], []
-                    amp_grads_std = []
-                    phase_grads_list, phase_grads_list_mch, phase_grads_list_nch = [], [], []
-                    phase_grads_std = []
-                    for module_name in select_modules:
-                        amp_grads = np.concatenate(amp_gradient_dict[module_name], axis=1)
-                        amp_grads_mch = np.concatenate(amp_gradient_dict_mch[module_name], axis=1)
-                        amp_grads_nch = np.concatenate(amp_gradient_dict_nch[module_name], axis=1)
-                        Path(f'{output_dir}/all_layer_gradients/{file}/phase/{module_name}/').mkdir(parents=True,
-                                                                                                    exist_ok=True)
-                        Path(f'{output_dir}/all_layer_gradients/{file}/amps/{module_name}/').mkdir(parents=True,
-                                                                                                   exist_ok=True)
-
-                        np.save(
-                            f'{home}/outputs/all_layer_gradients/{file}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_ALLCH',
-                            amp_grads)
-                        np.save(
-                            f'{home}/outputs/all_layer_gradients/{file}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_MCH',
-                            amp_grads_mch)
-                        np.save(
-                            f'{home}/outputs/all_layer_gradients/{file}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_NCH',
-                            amp_grads_nch)
-
-                        print('concatenated grads shape:', amp_grads.shape)
-                        phase_grads = np.concatenate(phase_gradient_dict[module_name], axis=1)
-                        phase_grads_mch = np.concatenate(phase_gradient_dict_mch[module_name], axis=1)
-                        phase_grads_nch = np.concatenate(phase_gradient_dict_nch[module_name], axis=1)
-
-                        np.save(
-                            f'{home}/outputs/all_layer_gradients/{file}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_ALLCH',
-                            phase_grads)
-                        np.save(
-                            f'{home}/outputs/all_layer_gradients/{file}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_MCH',
-                            phase_grads_mch)
-                        np.save(
-                            f'{home}/outputs/all_layer_gradients/{file}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_NCH',
-                            phase_grads_nch)
-
-                        amp_grads_list.append(amp_grads)
-                        amp_grads_list_mch.append(amp_grads_mch)
-                        amp_grads_list_nch.append(amp_grads_nch)
-                        amp_grads_std.append(np.std(np.abs(amp_grads), axis=(0, 1)))
-
-                        phase_grads_list.append(phase_grads)
-                        phase_grads_std.append(np.std(np.abs(phase_grads), axis=(0, 1)))
-                        phase_grads_list_mch.append(phase_grads_mch)
-                        phase_grads_list_nch.append(phase_grads_nch)
-
-                    plot_all_module_gradients(select_modules, X_reshaped_list,
-                                              [amp_grads_list, amp_grads_list_mch, amp_grads_list_nch], amp_grads_std,
-                                              output_file=output_amp)
-                    plot_all_module_gradients(select_modules, X_reshaped_list,
-                                              [phase_grads_list, phase_grads_list_mch, phase_grads_list_nch],
-                                              phase_grads_std,
-                                              output_file=output_phase)
+                        # plot_all_module_gradients(select_modules, X_reshaped_list,
+                        #                           [phase_grads_list, phase_grads_list_mch, phase_grads_list_nch],
+                        #
+                        #                           output_file=output_phase)

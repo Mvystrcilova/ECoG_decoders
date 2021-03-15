@@ -175,3 +175,37 @@ trajectory_index 1: 9167
 Kernel size 4
 trajectory index 0: 9163
 trajectory index 1: 9164
+
+
+High pass shifted 9987, 9988
+high pass 9985, 9986
+Shifted 9981, 9982
+
+All layer gradients files2 9995, 9996
+All layer gradients files 9993, 9994
+
+high_pass valid 10008, 10007
+
+low-pass train high-pass valid 10018, 10029
+low-pass train high-pass valid shifted 10020, 10021
+
+
+Stride before pool False
+
+initial 10150, 10151
+initial shifted 10146, 10147
+high-pass 10152, 10153
+high-pass shifted 10156, 10157
+
+high-pass valid 10182, 10183
+high-pass valid shifted 10178, 10179
+
+low-pass valid 10187, 10186
+low-pass valid shifted 10184, 10185
+
+Stride before pool time shifts:
+
+10204, 10205, 10206, 10207, 10208, 10209, 10210, 10211, 10212, 10213
+
+Stride before pool time shifts high_pass:
+11501, 11502, 11503, 11504, 11505, 11506, 11507, 11508, 11509, 11510

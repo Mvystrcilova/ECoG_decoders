@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.1-runtime-ubuntu20.04
+FROM nvidia/cuda:11.2.1-runtime-ubuntu20.04
 
 RUN apt-get update && apt-get install -y \
     curl \
