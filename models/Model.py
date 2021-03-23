@@ -109,24 +109,6 @@ def change_network_stride(model, kernel_sizes=None, dilations=None, remove_maxpo
             print('previous', name, child.stride, child.kernel_size)
             print('now', name, strides[i], kernel_sizes[i])
             i += 1
-
-
-        if change_conv_layers:
-            if (('conv' in name) and (len(name) < 8)) or ('conv_classifier' == name):
-                add = False
-                if conv_dilations is None:
-                    new_model.add_module(f'conv_{j}',
-                                         nn.Conv2d(in_channels=child.in_channels, out_channels=child.out_channels, kernel_size=child.kernel_size, stride=(strides[j], 1),
-                                                      padding=child.padding, dilation=child.dilation))
-                else:
-                    new_model.add_module(f'conv_{j}',
-                                         nn.Conv2d(in_channels=child.in_channels, out_channels=child.out_channels,
-                                                   kernel_size=child.kernel_size, stride=(strides[j], 1),
-                                                   padding=child.padding, dilation=(conv_dilations[j], 1)))
-                print('previous', name, child.stride, child.kernel_size, child.dilation)
-                print('now', name, strides[j], child.kernel_size, conv_dilations[j])
-                j += 1
-
         if add:
             new_model.add_module(name, child)
 

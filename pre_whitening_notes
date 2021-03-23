@@ -1,0 +1,109 @@
+Normal - 'm'
+Velocity:
+k1 : 12121
+k2_d1, k2_d2, k2_d3 : 12122
+k3_d1, k3_d2, k3_d3 sbp0 : 12123
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1 : 12124
+k2_d1, k2_d2, k2_d3: 12125
+k3_d1, k3_d2, k3_d3 sbp0: 12126
+k3_d3 sbp1:
+
+######################################################
+
+Normal shifted: - 'sm'
+Velocity:
+k1 : 12133
+k2_d1, k2_d2, k2_d3 : 12134
+k3_d1, k3_d2, k3_d3 sbp0 : 12135
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 12136
+k2_d1, k2_d2, k2_d3: 12137
+k3_d1, k3_d2, k3_d3 sbp0: 12138
+k3_d3 sbp1:
+
+##############################################
+
+High-pass both - 'hp_m'
+Velocity:
+k1 : 12115
+k2_d1, k2_d2, k2_d3 : 12116
+k3_d1, k3_d2, k3_d3 sbp0 : 12117
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 12118
+k2_d1, k2_d2, k2_d3: 12119
+k3_d1, k3_d2, k3_d3 sbp0: 12120
+k3_d3 sbp1:
+
+######################################################
+
+High-pass both shifted: - 'hp_sm'
+Velocity:
+k1 : 12127
+k2_d1, k2_d2, k2_d3 : 12128
+k3_d1, k3_d2, k3_d3 sbp0 : 12129
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 12130
+k2_d1, k2_d2, k2_d3: 12131
+k3_d1, k3_d2, k3_d3 sbp0: 12132
+k3_d3 sbp1:
+
+######################################################
+
+Full training, hp validation - hpv_m
+Velocity:
+k1 :
+k2_d1, k2_d2, k2_d3 :
+k3_d1, k3_d2, k3_d3 sbp0 :
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1:
+k2_d1, k2_d2, k2_d3:
+k3_d1, k3_d2, k3_d3 sbp0:
+k3_d3 sbp1:
+
+######################################################
+
+Full training, hp validation - 'hpv_sm'
+k1 :
+k2_d1, k2_d2, k2_d3 :
+k3_d1, k3_d2, k3_d3 sbp0 :
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1:
+k2_d1, k2_d2, k2_d3:
+k3_d1, k3_d2, k3_d3 sbp0:
+k3_d3 sbp1:
+
+######################################################
+
+Lp training & validation - 'lpv_both_m'
+k1 :
+k2_d1, k2_d2, k2_d3 :
+k3_d1, k3_d2, k3_d3 sbp0 :
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1:
+k2_d1, k2_d2, k2_d3:
+k3_d1, k3_d2, k3_d3 sbp0:
+k3_d3 sbp1:
+
+######################################################
+
+Full training, low-pass validation - 'lpv_m'
+
+
+######################################################
+
+Full training, lp validation shifted - 'lpv_sm'

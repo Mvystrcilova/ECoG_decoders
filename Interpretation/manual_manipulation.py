@@ -185,39 +185,38 @@ def get_amp_grads_per_crops(outs, X_reshaped):
 
     return amp_grads_per_crop
 
-# model_names = ['cropped_model_strides_3333_dilations_1111_conv_d_1111', 'cropped_model_strides_3333_dilations_1111_conv_d_24816',
-#                'cropped_model_strides_3333_dilations_1111_conv_d_392781', 'cropped_model_strides_3333_dilations_24816_conv_d_24816',
-#                'cropped_model_strides_3333_dilations_392781_conv_d_1111']
-# model_names = ['cropped_model_strides_2222_dilations_1111', 'cropped_model_strides_2222', 'cropped_model_strides_2222_dilations_24816']
-
 variable = 'absVel'
 model_prefix = 'm'
-model_names = [f'lr_0.001/{model_prefix}_{variable}_k_1111', f'lr_0.001/{model_prefix}_{variable}_k_2222',
-               f'lr_0.001/{model_prefix}_{variable}_k_3333', f'lr_0.001/{model_prefix}_{variable}_k_2222_dilations_1111',
-               f'lr_0.001/{model_prefix}_{variable}_k_3333_dilations_1111',
-               f'lr_0.001/{model_prefix}_{variable}_k_2222_dilations_24816',
-               f'lr_0.001/{model_prefix}_{variable}_k_3333_dilations_24816']
-model_names = [f'lr_0.001/{model_prefix}_{variable}_k_2222_dilations_24816',
-               f'lr_0.001/{model_prefix}_{variable}_k_3333_dilations_24816',f'lr_0.001/{model_prefix}_{variable}_k_4444_dilations_1111',  f'lr_0.001/{model_prefix}_{variable}_k_4444_dilations_24816']
 
 trained_modes = ['trained', 'untrained']
 eval_modes = ['train', 'validation']
 cropped = False
 
 
-def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, model_file=None, shift=False, high_pass=False, trajectory_index=0,
-                          multi_layer=False, motor_channels=None, low_pass=False, shift_by=None):
+def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, saved_model_dir, model_file=None, shift=False, high_pass=False, trajectory_index=0,
+                          multi_layer=False, motor_channels=None, low_pass=False, shift_by=None, whiten=False):
+    if shift_by is not None:
+        shift_str = f'shift_{shift_by}'
+        model_name_list = model_name.split('/')
+        model_name_list = [model_name_list[0], shift_str, model_name_list[1]]
+        model_name = '/'.join(model_name_list)
+        index = 2
+        random_valid = False
+    else:
+        index = 1
+        shift_str = f''
+        random_valid = True
     if model_file is None:
         if '/' in model_name:
-            other_model_name = model_name.split('/')[2] + f'_p_{patient_index}'
+            other_model_name = model_name.split('/')[index] + f'_p_{patient_index}'
         else:
             other_model_name = f'{model_name}_p_{patient_index}'
         if trained_mode == 'untrained':
 
             model_file = f'/models/saved_models/{model_name}/{other_model_name}/initial_{other_model_name}'
         else:
+            # model_file = f'/models/saved_models/{model_name}/{other_model_name}/last_model'
             model_file = f'/models/saved_models/{model_name}/{other_model_name}/best_model_split_0'
-
     output = f'{output_dir}/hp_graphs/{model_name}/{eval_mode}/{trained_mode}/'
     # Path(output).mkdir(parents=True, exist_ok=True)
     model = load_model(model_file)
@@ -226,33 +225,25 @@ def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, mo
 
     in_channels = get_num_of_channels(home + f'/previous_work/P{patient_index}_data.mat')
     n_preds_per_input = get_output_shape(model, in_channels, 1200)[1]
-    small_window = input_time_length - n_preds_per_input + 1
-
+    shift_window = input_time_length - n_preds_per_input + 1
+    small_window = min((input_time_length - n_preds_per_input)*2, 1200)
+    print('small window:', small_window, model_name)
+    print('shift window:', shift_window, shift)
     if shift_by is None:
-        shift_index = int(small_window / 2)
+        shift_index = int(shift_window / 2)
     else:
-        shift_index = int((small_window / 2) - shift_by)
+        shift_index = int((shift_window / 2) - shift_by)
 
     data = Data(home + f'/previous_work/P{patient_index}_data.mat', -1, low_pass=low_pass, trajectory_index=trajectory_index,
-                shift_data=shift, high_pass=high_pass, shift_by=shift_index)
+                shift_data=shift, high_pass=high_pass, shift_by=shift_index, pre_whiten=whiten, random_valid=random_valid)
 
     data.cut_input(input_time_length, n_preds_per_input, False)
     train_set, test_set = data.train_set, data.test_set
     corrcoef = get_corr_coef(train_set, model)
     num_channels = None
 
-    # if motor_channels is not None:
-    #     if motor_channels:
-    #         train_set = data.get_certain_channels(train_set, True)
-    #         test_set = data.get_certain_channels(test_set, True)
-    #         num_channels = len(data.motor_channels)
-    #     else:
-    #         train_set = data.get_certain_channels(train_set, False)
-    #         test_set = data.get_certain_channels(test_set, False)
-    #         num_channels = len(data.non_motor_channels)
     if eval_mode == 'validation':
         train_set = test_set
-    # wSizes = [1038, 628]
 
     X_reshaped = np.asarray(train_set.X)
     print(X_reshaped.shape)
@@ -269,7 +260,7 @@ def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, mo
 
     return corrcoef, new_model, X_reshaped, small_window, output, data.motor_channels, data.non_motor_channels
 
-
+model_names = []
 if __name__ == '__main__':
     if cropped:
         model_string = 'cropped_model'

@@ -106,28 +106,35 @@ def get_num_of_predictions(kernels, dilations, layer=None):
     print('made for sbp0')
     if layer == 'conv_spat':
         return 1200 - 10 + 1, 0
+
     max_k, max_l = get_output_shape((input_time_length, input_channels), (10, 1), (1, 1), (1, 1),)
     max_k, max_l = get_output_shape((max_k, max_l), (1, input_channels), (1, 1), (1, 1),)
-    # max_k, max_l = get_output_shape((max_k, max_l), (kernels[0], 1), (1, 1), (dilations[0], 1))
-    max_k, max_l = get_output_shape((max_k, max_l), (kernels[0], 1), (1, 1), (1, 1))
+    if True:
+        max_k, max_l = get_output_shape((max_k, max_l), (kernels[0], 1), (1, 1), (dilations[0], 1))
+        i = 1
+    else:
+        max_k, max_l = get_output_shape((max_k, max_l), (kernels[0], 1), (1, 1), (1, 1))
+        i = 0
 
     max_k, max_l = get_output_shape((max_k, max_l), (10, 1), (1, 1), (3, 1))
     if layer == 'conv_2':
         return max_k, max_l
     # max_k, max_l = get_output_shape((max_k, max_l), (kernels[1], 1), (1, 1), (dilations[1], 1))
-    max_k, max_l = get_output_shape((max_k, max_l), (kernels[1], 1), (1, 1), (dilations[0], 1))
+    max_k, max_l = get_output_shape((max_k, max_l), (kernels[1], 1), (1, 1), (dilations[i], 1))
+    i += 1
 
     max_k, max_l = get_output_shape((max_k, max_l), (10, 1), (1, 1), (9, 1))
     if layer == 'conv_3':
         return max_k, max_l
     # max_k, max_l = get_output_shape((max_k, max_l), (kernels[2], 1), (1, 1), (dilations[2], 1))
-    max_k, max_l = get_output_shape((max_k, max_l), (kernels[2], 1), (1, 1), (dilations[1], 1))
+    max_k, max_l = get_output_shape((max_k, max_l), (kernels[2], 1), (1, 1), (dilations[i], 1))
+    i += 1
 
     max_k, max_l = get_output_shape((max_k, max_l), (10, 1), (1, 1), (27, 1))
     if layer == 'conv_4':
         return max_k, max_l
     # max_k, max_l = get_output_shape((max_k, max_l), (kernels[3], 1), (1, 1), (dilations[3], 1))
-    max_k, max_l = get_output_shape((max_k, max_l), (kernels[3], 1), (1, 1), (dilations[2], 1))
+    max_k, max_l = get_output_shape((max_k, max_l), (kernels[3], 1), (1, 1), (dilations[i], 1))
 
     max_k, max_l = get_output_shape((max_k, max_l), (2, 1), (1, 1), (81, 1))
     return max_k, max_l

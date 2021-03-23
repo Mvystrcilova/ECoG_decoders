@@ -22,15 +22,6 @@ parser.add_argument("--dilations", default=[3, 9, 27, 81], type=int, nargs=4, he
 parser.add_argument("--starting_patient_index", default=1, type=int, help="Learning rate.")
 parser.add_argument('--variable', default=0, type=int)
 
-activation = {}
-
-
-def get_activation(name):
-    def hook(model, input, output):
-        activation[name] = output.detach()
-
-    return hook
-
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -45,7 +36,7 @@ if __name__ == '__main__':
     learning_rate = 0.001
     low_pass = False
     shift = False
-    high_pass = False
+    high_pass = True
     high_pass_valid = False
     add_padding = False
     low_pass_training = False
@@ -55,10 +46,10 @@ if __name__ == '__main__':
         saved_model_dir = 'pre_whitened'
 
     if trajectory_index == 0:
-        model_string = f'm_vel'
+        model_string = f'hp_m_vel'
         variable = 'vel'
     else:
-        model_string = 'm_absVel'
+        model_string = 'hp_m_absVel'
         variable = 'absVel'
 
     best_valid_correlations = []

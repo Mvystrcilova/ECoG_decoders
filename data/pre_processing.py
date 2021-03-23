@@ -1,9 +1,14 @@
+import random
+
 import mat73
 import numpy as np
+import scipy
+from braindecode.util import np_to_var
 from skorch.dataset import CVSplit, Dataset
 from Training.CropsFromTrialsIterator import CropsFromTrialsIterator
 from scipy import signal
 import matplotlib.pyplot as plt
+import torch
 
 
 def read_mat_file(mat_file):
@@ -18,28 +23,38 @@ def get_num_of_channels(mat_file):
 
 
 def band_pass_data(Xs, ys, order=3, cut_off_frequency=40, btype='low'):
+    print('passing order:', order)
     filter = signal.butter(order, cut_off_frequency, btype=btype, output='sos', fs=250)
     print(Xs[0][:, 0].shape)
-    prev_signal = abs(np.fft.rfft(Xs[0][:, 0], n=250))
+    prev_signal = abs(np.fft.rfft(Xs[0][:, 0], n=len(Xs[0])))
     bandpassed_x = [signal.sosfilt(filter, x, axis=0) for x in Xs]
-    later_signal = abs(np.fft.rfft(bandpassed_x[0][:, 0], n=250))
+    later_signal = abs(np.fft.rfft(bandpassed_x[0][:, 0], n=len(Xs[0])))
     # plt.xscale('log')
-    plt.xlabel('frequency [Hz]')
-    plt.ylabel('|amplitude|')
-    plt.plot(prev_signal)
-    plt.show()
-
+    # plt.xlabel('frequency [Hz]')
+    # plt.ylabel('|amplitude|')
+    # plt.plot(prev_signal)
+    # plt.show()
+    #
     # plt.xscale('log')
-    plt.xlabel('frequency [Hz]')
-    plt.ylabel('|amplitude|')
-    plt.plot(later_signal)
-    plt.show()
-
-    # plt.plot(np.arange(0, len(Xs[0][:, 0][:1000])), Xs[0][:, 0][:1000], label='original')
-    # plt.plot(np.arange(0, len(bandpassed_x[0][:, 0][:1000])), bandpassed_x[0][:, 0][:1000], label='low-passed')
+    # plt.xlabel('frequency [Hz]')
+    # plt.ylabel('|amplitude|')
+    # plt.plot(later_signal)
+    # plt.show()
+    #
+    # plt.plot(np.arange(0, len(Xs[0][:, 0][:])), Xs[0][:, 0][:], label='original')
+    # plt.plot(np.arange(0, len(bandpassed_x[0][:, 0][:])), bandpassed_x[0][:, 0][:], label='low-passed')
     # plt.show()
     return bandpassed_x, ys
 
+
+def get_amplitude_strength(Xs):
+    amplitudes = []
+    for x in Xs:
+        for i in range(x.shape[1]):
+            prev_signal = abs(np.fft.rfft(x[:, i], n=250))
+            amplitudes.append(prev_signal)
+    print(len(prev_signal))
+    print(prev_signal[0].shape)
 
 
 class MyDataset:
@@ -48,36 +63,117 @@ class MyDataset:
         self.y = y
 
 
+def whiten_data(train_set, valid_set=False, channel_normalizations=None, iqrs=None, means=None, plot=False):
+    print('Whitening!')
+    trial_ffteds = []
+    trial_means = []
+    trial_iqrs = []
+    normalized_data = []
+    for j, trial in enumerate(train_set.X):
+        normalized_trial = []
+        if not valid_set:
+            channel_normalizations = []
+            means = []
+            iqrs = []
+        # for each channel
+        for i in range(trial.shape[1]):
+            channel = trial[:, i]
+            ffted = np.fft.rfft(channel, axis=0, n=len(channel))
+            # print(f'initial signal {i}', channel[:10])
+            if not valid_set:
+                channel_normalizations.append(np.abs(ffted))
+                normalized_ffted = np.divide(ffted, np.abs(ffted))
+                text = 'Train set'
+            else:
+                normalized_ffted = np.divide(ffted, channel_normalizations[i])
+                text = 'Valid set'
+            normalized_out = np.real(np.fft.ifft(normalized_ffted, n=len(channel)))
+            # second_ffted = np.fft.rfft(normalized_out, axis=0, n=len(channel))
+            # second_normalized = np.fft.ifft(second_ffted, n=len(channel))
+            # plt.plot(np.fft.rfftfreq(len(channel), 1 / 250.0), np.abs(second_ffted))
+            # plt.show()
+            # plt.plot([x for x in range(0, len(channel))], second_normalized)
+            # plt.show()
+            # print(f'normalized amplitudes signal {i}', normalized_out[:10])
+            if not valid_set:
+                mean = np.mean(normalized_out)
+                iqr = scipy.stats.iqr(normalized_out)
+                iqrs.append(iqr)
+                means.append(mean)
+                normalized_out = (normalized_out-mean)/iqr
+            else:
+                normalized_out = (normalized_out - means[i]) / iqrs[i]
+            # print(f'normalized amplitudes iqr signal {i}', normalized_out[:10])
+            if False:
+                fig, ax = plt.subplots(2, 2, figsize=(13, 10))
+                ax[(0, 0)].plot(np.fft.rfftfreq(len(channel), 1 / 250.0), np.abs(ffted))
+                ax[(0, 0)].set_title('Original spectrum')
+                ax[(0, 0)].set_ylabel('Amplitude')
+                ax[(0, 0)].set_xlabel('Frequency (Hz)')
+                ax[(0, 1)].plot([x for x in range(0, len(channel))], channel)
+                ax[(0, 1)].set_title('Original signal')
+                ax[(0, 1)].set_ylabel('Signal value')
+                ax[(0, 1)].set_xlabel('Time (samples)')
+                ax[(1, 0)].plot(np.fft.rfftfreq(len(channel), 1 / 250.0), np.abs(normalized_ffted))
+                ax[(1, 0)].set_title('Normalized spectrum')
+                ax[(1, 0)].set_ylabel('Amplitude')
+                ax[(1, 0)].set_xlabel('Frequency (Hz)')
+                ax[(1, 1)].plot([x for x in range(0, len(channel))], normalized_out)
+                ax[(1, 1)].set_title('Normalized spectrum signal')
+                ax[(1, 1)].set_ylabel('Signal value')
+                ax[(1, 1)].set_xlabel('Time (samples)')
+                ax[(0, 0)].annotate(text, xy=(1., 1), xytext=(12, 13),
+                                        xycoords='axes fraction', textcoords='offset points',
+                                        size='15', ha='center', va='baseline')
+                plt.subplots_adjust(hspace=0.5)
+                # plt.subplots_adjust(vspace=0.3)
+                plt.show()
+            normalized_trial.append(normalized_out)
+        normalized_trial = np.stack(normalized_trial, axis=1)
+        trial_ffteds.append(channel_normalizations)
+        trial_means.append(means)
+        trial_iqrs.append(iqrs)
+        normalized_data.append(normalized_trial)
+    channel_normalizations = np.mean(np.stack(trial_ffteds), axis=0)
+    means = np.mean(np.stack(trial_means), axis=0)
+    iqrs = np.mean(np.stack(trial_iqrs), axis=0)
+    assert len(train_set.X) == len(normalized_data)
+    assert len(train_set.X[0]) == len(normalized_data[0])
+    return normalized_data, channel_normalizations, iqrs, means
+
+
 class Data:
     def __init__(self, mat_file, num_of_folds, low_pass, trajectory_index, shift_data=False, high_pass=False,
-                 valid_high_pass=False, shift_by=0, low_pass_training=False, double_training=False):
+                 valid_high_pass=False, shift_by=0, low_pass_training=False, double_training=False, train_indices=None,
+                 valid_indices=None, pre_whiten=False, random_valid=True):
+        self.random_valid = random_valid
+        self.pre_whiten = pre_whiten
         self.data = read_mat_file(mat_file)
         self.double_training = double_training
+        self.train_indices = train_indices
+        self.valid_indices = valid_indices
         self.motor_channels, self.non_motor_channels = None, None
         self.low_pass, self.high_pass, self.valid_high_pass, self.low_pass_training = low_pass, high_pass, valid_high_pass, low_pass_training
+        self.high_pass_train, self.high_pass_valid, self.high_pass_test = None, None, None
+        self.low_pass_train, self.low_pass_test = None, None
         self.shift_data = shift_data
         self.shift_by = shift_by
         self.num_of_folds = num_of_folds
         self.datasets = self.create_datasets(trajectory_index=trajectory_index)
         self.train_set, self.valid_set, self.test_set = self.split_data()
 
-        if self.low_pass or self.low_pass_training:
-            self.low_pass_train, self.low_pass_valid, self.low_pass_test = self.split_data(self.low_passed_dataset)
-
         if self.low_pass:
             self.test_set = self.low_pass_test
 
         if self.low_pass_training:
-            self.train_set = self.low_pass_train
+            self.train_set = self.low_pass_test
 
         if self.high_pass:
-            self.train_set, self.valid_set, self.test_set = self.split_data(self.high_passed_dataset)
+            self.train_set, self.valid_set, self.test_set = self.high_pass_train, self.high_pass_valid, self.high_pass_test
 
         if self.valid_high_pass:
-            self.high_pass_train, self.high_pass_valid, self.high_pass_test = self.split_data(self.high_passed_dataset)
             self.test_set = self.high_pass_test
-        # if self.low_pass_training:
-        #     self.train_set, self.low_pass_valid, self.low_pass_test = self.split_data(self.band_passed_dataset)
+
         self.in_channels = self.train_set.X[0].shape[1]
         self.n_classes = len(self.train_set.y[0].shape)
         self.fold_number = 0
@@ -103,32 +199,67 @@ class Data:
             self.num_of_folds = len(Xs)
         dataset = Dataset(Xs, ys)
 
-        if self.low_pass or self.low_pass_training:
-            X, y = band_pass_data(Xs, ys, 3, 40, 'low')
-            self.low_passed_dataset = Dataset(X, y)
 
-        elif self.high_pass:
-            X, y = band_pass_data(Xs, ys, 5, 60, 'hp')
-            self.high_passed_dataset = Dataset(X, y)
-
-        if self.valid_high_pass:
-            X, y = band_pass_data(Xs, ys, 3, 60, 'hp')
-            self.high_passed_dataset = Dataset(X, y)
         return dataset
 
-    def split_data(self, dataset=None):
+    def split_data(self, dataset=None, indices=None):
         length = len(self.datasets.X)
-        index = int((length/100)*80)
+        index = int((length / 100) * 80)
+        if (self.train_indices is None) and self.random_valid:
+            valid_indices = random.sample([x for x in range(length)], length - index)
+            self.valid_indices = valid_indices
+            train_indices = [x for x in range(length) if x not in valid_indices]
+            self.train_indices = train_indices
+
+        elif self.train_indices is not None:
+            valid_indices = self.valid_indices
+            train_indices = self.train_indices
+        elif not self.random_valid:
+            self.train_indices = [x for x in range(0, index)]
+            self.valid_indices = [x for x in range(index, length)]
+
         if self.num_of_folds != -1:
             train_set = MyDataset(self.datasets.X[:], self.datasets.y[:])
             return train_set, None, None
 
         if dataset is None:
-            train_set = MyDataset(self.datasets.X[:index], self.datasets.y[:index])
-            test_set = MyDataset(self.datasets.X[index:], self.datasets.y[index:])
+            # train_set = MyDataset(self.datasets.X[:index], self.datasets.y[:index])
+            # test_set = MyDataset(self.datasets.X[index:], self.datasets.y[index:])
+
+            train_set = MyDataset([self.datasets.X[i] for i in self.train_indices],
+                                  [self.datasets.y[i] for i in self.train_indices])
+            test_set = MyDataset([self.datasets.X[i] for i in self.valid_indices],
+                                 [self.datasets.y[i] for i in self.valid_indices])
+            if self.random_valid:
+                print('Random sets')
         else:
-            train_set = MyDataset(dataset.X[:index], dataset.y[:index])
-            test_set = MyDataset(dataset.X[index:], dataset.y[index:])
+            # train_set = MyDataset(dataset.X[:index], dataset.y[:index])
+            # test_set = MyDataset(dataset.X[index:], dataset.y[index:])
+            train_set = MyDataset([dataset.X[i] for i in self.train_indices],
+                                  [dataset.y[i] for i in self.train_indices])
+            test_set = MyDataset([dataset.X[i] for i in self.valid_indices],
+                                 [dataset.y[i] for i in self.valid_indices])
+        print('validation_indices:', self.valid_indices)
+        print('train_indices:', self.train_indices)
+        if self.pre_whiten and (dataset is None):
+            train_set.X, channel_norms, iqr, median = whiten_data(train_set, plot=False)
+            test_set.X, _, _, _ = whiten_data(test_set, True, channel_normalizations=channel_norms, iqrs=iqr,
+                                              means=median, plot=False)
+        if dataset is None:
+            train_Xs, train_ys = train_set.X, train_set.y
+            test_Xs, test_ys = test_set.X, test_set.y
+            if self.low_pass or self.low_pass_training:
+                X, y = band_pass_data(train_Xs, train_ys, 15, 40, 'low')
+                self.low_pass_train = Dataset(X, y)
+                X, y = band_pass_data(test_Xs, test_ys, 15, 40, 'low')
+                self.low_pass_test = Dataset(X, y)
+
+            elif self.high_pass or self.high_pass_valid:
+                X, y = band_pass_data(train_Xs, train_ys, 15, 60, 'hp')
+                self.high_pass_train = Dataset(X, y)
+                X, y = band_pass_data(test_Xs, test_ys, 15, 60, 'hp')
+                self.high_pass_test = Dataset(X, y)
+
 
         return train_set, None, test_set
 
@@ -139,6 +270,11 @@ class Data:
         self.train_set = concatenate_batches(self.train_set, iterator, False)
         if self.num_of_folds == -1:
             self.test_set = concatenate_batches(self.test_set, iterator, False)
+            # random_indices = [x for x in range(len(self.test_set))]
+            # random.shuffle(random_indices)
+            # ys = self.test_set.y
+            # self.test_set.y = np.stack([ys[index] for index in random_indices])
+            # print('shuffled valid set!')
             # if self.low_pass:
             #     self.low_pass_train = concatenate_batches(self.low_pass_train, iterator, False)
             #     self.low_pass_test = concatenate_batches(self.low_pass_test, iterator, False)
@@ -193,11 +329,12 @@ class Data:
             validation_set = Dataset(X[0:int(fold_length)], y[0:int(fold_length)])
 
         else:
-            train_set = Dataset(np.concatenate([X[int(fold_length) * (self.fold_number - 1):int(fold_length) * self.fold_number],
+            train_set = Dataset(
+                np.concatenate([X[int(fold_length) * (self.fold_number - 1):int(fold_length) * self.fold_number],
                                 X[int(fold_length) * (self.fold_number + 1):]]),
-                                np.concatenate([y[int(fold_length) * (self.fold_number - 1):int(fold_length) * self.fold_number],
+                np.concatenate([y[int(fold_length) * (self.fold_number - 1):int(fold_length) * self.fold_number],
                                 y[int(fold_length) * (self.fold_number + 1):]]
-                                ))
+                               ))
             validation_set = Dataset(X[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)],
                                      y[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)])
         self.fold_number += 1
@@ -215,8 +352,9 @@ class Data:
                                      self.train_set.y[0:int(fold_length)])
 
         else:
-            validation_set = Dataset(self.train_set.X[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)],
-                                     self.train_set.y[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)])
+            validation_set = Dataset(
+                self.train_set.X[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)],
+                self.train_set.y[int(fold_length) * self.fold_number:int(fold_length) * (self.fold_number + 1)])
 
         return validation_set
 
@@ -255,13 +393,15 @@ def concatenate_batches(set, iterator, shuffle):
 
 if __name__ == '__main__':
     num_of_channels = get_num_of_channels('../previous_work/P1_data.mat')
-    no_shift_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0, low_pass_training=False,
-                valid_high_pass=False, shift_by=int(628/2), shift_data=False, high_pass=True)
+    no_shift_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0,
+                         low_pass_training=False,
+                         valid_high_pass=False, shift_by=int(628 / 2), shift_data=False,
+                         pre_whiten=True, high_pass=True)
 
-    data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0, low_pass_training=False,
-                valid_high_pass=False, shift_by=int(628/2), shift_data=True)
+    data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=1, low_pass_training=False,
+                valid_high_pass=False, shift_by=int(628 / 2), shift_data=True)
     shifted_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0,
-                        shift_data=True, high_pass=False, shift_by=int(628/2) - 100)
+                        shift_data=True, high_pass=False, shift_by=int(628 / 2) - 100)
     data.cut_input(1200, 519, False)
     shifted_data.cut_input(1200, 519, False)
     # prev_trainset = data.train_set
@@ -293,6 +433,3 @@ if __name__ == '__main__':
     # plt.legend()
     # plt.show()
     # print(data)
-
-
-

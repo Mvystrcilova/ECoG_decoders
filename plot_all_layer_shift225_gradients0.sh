@@ -10,5 +10,5 @@ set -eux
 ch-run imgdir2/diplomka_image sh <<EOF
 set -eux
 cd /home/vystrcilova/ECoG_decoders
-python3 high_pass_training.py --kernel_size 3 3 3 3 --variable 0 --starting_patient_index 1
+python3 shift_gradient_inspections.py --variable='vel' --shifts 150 175 200 225
 EOF

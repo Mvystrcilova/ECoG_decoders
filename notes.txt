@@ -209,3 +209,185 @@ Stride before pool time shifts:
 
 Stride before pool time shifts high_pass:
 11501, 11502, 11503, 11504, 11505, 11506, 11507, 11508, 11509, 11510
+
+
+
+Not early stopping
+
+############################################################
+
+Normal - 'm'
+Velocity:
+k1 : 11633
+k2_d1, k2_d2, k2_d3 : 11632
+k3_d1, k3_d2, k3_d3 sbp0 : 11631
+k3_d3 sbp1 : 11753
+k4_ds: 12073
+
+Absolute velocity:
+k1 : 11634
+k2_d1, k2_d2, k2_d3: 11635
+k3_d1, k3_d2, k3_d3 sbp0: 11636
+k3_d3 sbp1: 11752
+k4_ds: 12072
+
+Normal shifted: - 'sm'
+Velocity:
+k1 : 11640
+k2_d1, k2_d2, k2_d3 : 11641
+k3_d1, k3_d2, k3_d3 sbp0 : 11642
+k3_d3 sbp1 : 11754
+
+Absolute velocity:
+k1: 11639
+k2_d1, k2_d2, k2_d3: 11638
+k3_d1, k3_d2, k3_d3 sbp0: 11637
+k3_d3 sbp1: 11755
+
+##############################################
+
+High-pass both - 'hp_m'
+Velocity:
+k1 : 15-11804, 3-11905
+k2_d1, k2_d2, k2_d3 : 15-11805, 3-11907
+k3_d1, k3_d2, k3_d3 sbp0 : 15-11806, 3- 11908
+k3_d3 sbp1 : 15-11757, 3-
+
+Absolute velocity:
+k1: 11807, 3-11906
+k2_d1, k2_d2, k2_d3: 15-11808, 3-11909
+k3_d1, k3_d2, k3_d3 sbp0: 15-11809, 3-11910
+k3_d3 sbp1: 11756
+
+High-pass both shifted: - 'hp_sm'
+Velocity:
+k1 : 11777, 3-11918
+k2_d1, k2_d2, k2_d3 : 11779, 3-11919
+k3_d1, k3_d2, k3_d3 sbp0 : 11780, 3-11920
+k3_d3 sbp1 : 11770
+
+Absolute velocity:
+k1: 11778, 3-11922
+k2_d1, k2_d2, k2_d3: 11781, 3-11923
+k3_d1, k3_d2, k3_d3 sbp0: 11782, 3-11924
+k3_d3 sbp1: 11771
+
+############################################################
+
+High-pass valid: - 'hpv_m'
+Velocity:
+k1 : 11789, 3-11931
+k2_d1, k2_d2, k2_d3 : 11790, 3-11932
+k3_d1, k3_d2, k3_d3 sbp0 : 11791, 3-11933
+k3_d3 sbp1 : 11820
+
+Absolute velocity:
+k1: 11792, 3-11934
+k2_d1, k2_d2, k2_d3: 11793, 3-11935
+k3_d1, k3_d2, k3_d3 sbp0: 11794, 3-11936
+k3_d3 sbp1: 11819
+
+High-pass valid shifted: - 'hpv_sm'
+Velocity:
+k1 : 11783,  3- 11962
+k2_d1, k2_d2, k2_d3 : 11679, 11784, 3- 11963
+k3_d1, k3_d2, k3_d3 sbp0 : 11785, 3- 11964
+k3_d3 sbp1 : 11773
+
+Absolute velocity:
+k1: 11786, 3- 11965
+k2_d1, k2_d2, k2_d3: 11787, 3- 11966
+k3_d1, k3_d2, k3_d3 sbp0: 11788, 3- 11967
+k3_d3 sbp1: 11772
+
+############################################################
+
+Low-pass valid
+Velocity:
+k1 : 11686
+k2_d1, k2_d2, k2_d3 : 11685
+k3_d1, k3_d2, k3_d3 sbp0 : 11684
+k3_d3 sbp1 : 12068
+k4_ds: 12069
+
+Absolute velocity:
+k1: 11687
+k2_d1, k2_d2, k2_d3: 11688
+k3_d1, k3_d2, k3_d3 sbp0: 11689
+k3_d3 sbp1: 12071
+k4_ds: 12070
+
+Low pass valid shifted
+Velocity:
+k1 : 12014
+k2_d1, k2_d2, k2_d3 : 12015
+k3_d1, k3_d2, k3_d3 sbp0 : 12016
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 12017
+k2_d1, k2_d2, k2_d3: 12018
+k3_d1, k3_d2, k3_d3 sbp0 12019
+k3_d3 sbp1
+
+############################################################
+
+
+Low pass train, hp valid
+
+k1 : 11710
+k2_d1, k2_d2, k2_d3 : 11705
+k3_d1, k3_d2, k3_d3 sbp0 : 11711
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 11707
+k2_d1, k2_d2, k2_d3: 11708
+k3_d1, k3_d2, k3_d3 sbp0: 11709
+k3_d3 sbp1
+
+
+Low pass train, hp valid shifted
+Velocity:
+
+k1 : 11740
+k2_d1, k2_d2, k2_d3 : 11741
+k3_d1, k3_d2, k3_d3 sbp0 : 11742
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 11745
+k2_d1, k2_d2, k2_d3: 11744
+k3_d1, k3_d2, k3_d3 sbp0: 11743
+k3_d3 sbp1
+
+############################################################
+
+Low pass train, hp valid strong filters
+
+Velocity:
+k1 : 11712
+k2_d1, k2_d2, k2_d3 : 11713
+k3_d1, k3_d2, k3_d3 sbp0 : 11714
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 11717
+k2_d1, k2_d2, k2_d3: 11716
+k3_d1, k3_d2, k3_d3 sbp0: 11715
+k3_d3 sbp1
+
+Low pass train, hp valid strong filters shifted
+
+k1 : 11746
+k2_d1, k2_d2, k2_d3 : 11747
+k3_d1, k3_d2, k3_d3 sbp0 : 11748
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 12051
+k2_d1, k2_d2, k2_d3: 11750
+k3_d1, k3_d2, k3_d3 sbp0: 11749
+k3_d3 sbp1
+
+############################################################

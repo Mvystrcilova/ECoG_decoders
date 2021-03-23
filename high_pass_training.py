@@ -3,7 +3,7 @@ import os
 import pandas
 
 from Training.train import train_nets
-from global_config import home, random_seed, cuda
+from global_config import home, random_seed, cuda, get_model_name_from_kernel_and_dilation
 import torch
 from braindecode.util import set_random_seeds
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -41,7 +41,7 @@ def get_activation(name):
 if __name__ == '__main__':
     args = parser.parse_args()
     input_time_length = 1200
-    max_train_epochs = 300
+    max_train_epochs = 100
     batch_size = 16
     print(cuda, home)
     set_random_seeds(seed=random_seed, cuda=cuda)
@@ -50,24 +50,28 @@ if __name__ == '__main__':
     trajectory_index = args.variable
     num_of_folds = -1
     shift = True
-    high_pass = False
-    high_pass_valid = True
+    high_pass = True
+    high_pass_valid = False
     train_lowpass = False
     learning_rate = 0.001
+    saved_model_dir = f'lr_{learning_rate}'
+    whiten = True
 
+    if whiten:
+        saved_model_dir = f'pre_whitened'
     if trajectory_index == 0:
-        model_string = f'sbp1_hpvs_m_vel'
+        model_string = f'hp_sm_vel'
         variable = 'vel'
     else:
-        model_string = 'sbp1_hpvs_m_absVel'
+        model_string = 'hp_sm_absVel'
         variable = 'absVel'
 
     model_name = ''
 
     best_valid_correlations = []
 
-    # dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
-    dilations = [None]
+    dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]
+    # dilations = [None]
     if args.kernel_size == [1, 1, 1, 1]:
         dilations = [None]
 
@@ -76,15 +80,12 @@ if __name__ == '__main__':
         print(dilation)
         kernel_size = args.kernel_size
         print(kernel_size)
-        model_name = ''.join([str(x) for x in kernel_size])
-        if dilation is not None:
-            dilations_name = ''.join(str(x) for x in dilation)
-            model_name = f'{model_name}_dilations_{dilations_name}'
+        model_name = get_model_name_from_kernel_and_dilation(kernel_size, dilation)
 
         starting_patient_index = args.starting_patient_index
         if num_of_folds != -1:
-            if os.path.exists(f'{home}/outputs/high_pass_performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv'):
-                df = pandas.read_csv(f'{home}/outputs/high_pass_performance/lr_{learning_rate}/{model_string}_k_{model_name}/{variable}_performance.csv',
+            if os.path.exists(f'{home}/outputs/high_pass_performance/{saved_model_dir}/{model_string}_{model_name}/{variable}_performance.csv'):
+                df = pandas.read_csv(f'{home}/outputs/high_pass_performance/{saved_model_dir}/{model_string}_{model_name}/{variable}_performance.csv',
                                      sep=';', index_col=0)
                 df = df.T.drop_duplicates().T
                 starting_patient_index = df.shape[1] + 1
@@ -102,4 +103,5 @@ if __name__ == '__main__':
         train_nets(model_string, [x for x in range(starting_patient_index, 13)], dilation, kernel_size, lr=learning_rate,
                    num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,
                    variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass=high_pass,
-                   low_pass_train=train_lowpass, cropped=cropped, high_pass_valid=high_pass_valid)
+                   low_pass_train=train_lowpass, cropped=cropped, high_pass_valid=high_pass_valid, whiten=whiten,
+                   saved_model_dir=saved_model_dir)

@@ -1,11 +1,13 @@
 import argparse
 import random
 from pathlib import Path
-
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas
 import torch
 from braindecode import EEGRegressor
 from braindecode.models.util import get_output_shape
+from braindecode.util import np_to_var
 from skorch.callbacks import TensorBoard, Checkpoint
 
 from Interpretation.interpretation import get_corr_coef
@@ -23,7 +25,7 @@ torch.backends.cudnn.deterministic = True
 activations = {}
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--variable', default=0, type=int)
+parser.add_argument('--variable', default=1, type=int)
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -32,7 +34,7 @@ if __name__ == '__main__':
     trajectory_index = args.variable
     low_pass = False
     shift_by = None
-    lr = 0.0005
+    lr = 0.001
     shift = False
     max_train_epochs = 300
     if trajectory_index == 0:
@@ -41,15 +43,25 @@ if __name__ == '__main__':
     else:
         model_string = 'sbp0_dm_absVel'
         variable = 'absVel'
-
+    all_xs = []
+    all_ys = []
+    all_zs = []
+    corr_coefs_full = []
+    corr_coefs_hp = []
     for patient_index in range(1, 13):
         input_channels = get_num_of_channels(home + f'/previous_work/P{patient_index}_data.mat')
-        model, changed_model_full, model_name = get_model(input_channels, input_time_length,
-                                                          dilations=dilation[0],
-                                                          kernel_sizes=kernel_size, padding=False)
-        _, changed_model_hp, _ = get_model(input_channels, input_time_length,
-                                           dilations=dilation[0],
-                                           kernel_sizes=kernel_size, padding=False)
+        # model, changed_model_full, model_name = get_model(input_channels, input_time_length,
+        #                                                   dilations=dilation[0],
+        #                                                   kernel_sizes=kernel_size, padding=False)
+        # changed_model_full = load_model(f'/models/saved_models/lr_0.001/sbp1_sm_{variable}_k_3333/sbp1_sm_{variable}_k_3333_p_{patient_index}/best_model_split_0')
+        changed_model_full = load_model(f'/models/saved_models/lr_0.001/sbp0_m_{variable}_k3_d3/sbp0_m_{variable}_k3_d3_p_{patient_index}/best_model_split_0')
+        # _, changed_model_hp, _ = get_model(input_channels, input_time_length,
+        #                                    dilations=dilation[0],
+        #                                    kernel_sizes=kernel_size, padding=False)
+        # changed_model_hp = load_model(f'/models/saved_models/lr_0.001/sbp1_hps_{variable}_k_3333/sbp1_hps_{variable}_k_3333_p_{patient_index}/best_model_split_0')
+        changed_model_hp = load_model(f'/models/saved_models/lr_0.001/sbp0_hp_m_{variable}_k3_d3/sbp0_hp_m_{variable}_k3_d3_p_{patient_index}/best_model_split_0')
+
+        model_name = 'k3_d3'
         n_preds_per_input = get_output_shape(changed_model_full, input_channels, input_time_length)[1]
         small_window = input_time_length - n_preds_per_input + 1
         if shift_by is None:
@@ -102,8 +114,8 @@ if __name__ == '__main__':
             'optimizer', regressor.module_.named_parameters())
         print('output dir:', output_dir)
         Path(home + f'/models/double_models/{output_dir}/').mkdir(exist_ok=True, parents=True)
-        torch.save(model,
-                   home + f'/models/double_models/{output_dir}/initial_{model_string}_{model_name}_p_{patient_index}')
+        # torch.save(model,
+        #            home + f'/models/double_models/{output_dir}/initial_{model_string}_{model_name}_p_{patient_index}')
         regressor.max_correlation = -1000
         index = 0
         while index < data_full.train_set.X.shape[0]:
@@ -120,8 +132,9 @@ if __name__ == '__main__':
 
 
             index += 32
-        # full_train_set = np.stack([data_full.train_set.X, data_hp.train_set.X])
-        # full_train_set = full_train_set.reshape([full_train_set.shape[1], full_train_set.shape[2], full_train_set.shape[3], 2])
+
+        full_train_set = np.stack([data_full.train_set.X, data_hp.train_set.X])
+        full_train_set = full_train_set.reshape([full_train_set.shape[1], full_train_set.shape[2], full_train_set.shape[3], 2])
         # for epoch in range(max_train_epochs):
         #     for X_full, X_hp, y_full, y_hp in zip(data_full.train_set.X, data_hp.train_set.X, data_full.train_set.y, data_hp.train_set.y):
         #         regressor.train_step((X_full, X_hp), y_full)
