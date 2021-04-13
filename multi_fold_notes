@@ -1,0 +1,143 @@
+Normal - 'm'
+Velocity:
+k1 : 12511
+k2_d1, k2_d2, k2_d3 : 12512
+k3_d1, k3_d2, k3_d3 sbp0 : 12433 + 12486 loo, 12513 5fold
+k3_d3 sbp1 :
+k4_ds:
+
+
+Absolute velocity:
+k1 : 12514
+k2_d1, k2_d2, k2_d3: 12515
+k3_d1, k3_d2, k3_d3 sbp0: 12436 + 12485 loo, 12516 5fold
+k3_d3 sbp1:
+k4_ds:
+
+################################################################
+Normal shifted - 'sm'
+Velocity:
+k1 : 12517
+k2_d1, k2_d2, k2_d3 : 12518
+k3_d1, k3_d2, k3_d3 sbp0 : 12519, 12583 5fold
+k3_d3 sbp1 :
+k4_ds:
+
+
+Absolute velocity:
+k1 : 12520
+k2_d1, k2_d2, k2_d3: 12521
+k3_d1, k3_d2, k3_d3 sbp0: 12522;
+k3_d3 sbp1:
+k4_ds:
+
+################################################################
+High-passed - 'hp_m'
+Velocity:
+k1 : 12499
+k2_d1, k2_d2, k2_d3 : 12500
+k3_d1, k3_d2, k3_d3 sbp0 : 12501
+k3_d3 sbp1 :
+k4_ds:
+
+
+Absolute velocity:
+k1 : 12502
+k2_d1, k2_d2, k2_d3: 12503
+k3_d1, k3_d2, k3_d3 sbp0: 12504
+k3_d3 sbp1:
+k4_ds:
+
+################################################################
+
+high-pass shifted - 'hp_sm'
+Velocity:
+k1 :
+k2_d1, k2_d2, k2_d3 :
+k3_d1, k3_d2, k3_d3 sbp0 :
+k3_d3 sbp1 :
+k4_ds:
+
+
+Absolute velocity:
+k1 :
+k2_d1, k2_d2, k2_d3:
+k3_d1, k3_d2, k3_d3 sbp0:
+k3_d3 sbp1:
+k4_ds:
+
+################################################################
+
+low_pass valid - 'lp_m'
+Velocity:
+k1 :
+k2_d1, k2_d2, k2_d3 :
+k3_d1, k3_d2, k3_d3 sbp0 :
+k3_d3 sbp1 :
+k4_ds:
+
+
+Absolute velocity:
+k1 :
+k2_d1, k2_d2, k2_d3:
+k3_d1, k3_d2, k3_d3 sbp0:
+k3_d3 sbp1:
+k4_ds:
+
+################################################################
+
+low_pass valid shifted - 'lp_sm'
+Velocity:
+k1 :
+k2_d1, k2_d2, k2_d3 :
+k3_d1, k3_d2, k3_d3 sbp0 :
+k3_d3 sbp1 :
+k4_ds:
+
+
+Absolute velocity:
+k1 :
+k2_d1, k2_d2, k2_d3:
+k3_d1, k3_d2, k3_d3 sbp0:
+k3_d3 sbp1:
+k4_ds:
+
+################################################################
+
+High-passed valid - 'hpv_m'
+Velocity:
+k1 : 12443
+k2_d1, k2_d2, k2_d3 : 12444
+k3_d1, k3_d2, k3_d3 sbp0 : 12445
+k3_d3 sbp1 :
+k4_ds:
+
+
+Absolute velocity:
+k1 : 12446
+k2_d1, k2_d2, k2_d3: 12447
+k3_d1, k3_d2, k3_d3 sbp0: 12448
+k3_d3 sbp1:
+k4_ds:
+
+################################################################
+
+high-pass valid shifted - 'hpv_sm'
+Velocity:
+k1 :
+k2_d1, k2_d2, k2_d3 :
+k3_d1, k3_d2, k3_d3 sbp0 :
+k3_d3 sbp1 :
+k4_ds:
+
+
+Absolute velocity:
+k1 :
+k2_d1, k2_d2, k2_d3:
+k3_d1, k3_d2, k3_d3 sbp0:
+k3_d3 sbp1:
+k4_ds:
+
+################################################################
+################################################################
+################################################################

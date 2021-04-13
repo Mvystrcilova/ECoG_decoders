@@ -60,15 +60,15 @@ k3_d3 sbp1:
 
 Full training, hp validation - hpv_m
 Velocity:
-k1 :
-k2_d1, k2_d2, k2_d3 :
-k3_d1, k3_d2, k3_d3 sbp0 :
+k1 : 12242
+k2_d1, k2_d2, k2_d3 : 12243
+k3_d1, k3_d2, k3_d3 sbp0 : 12244
 k3_d3 sbp1 :
 
 Absolute velocity:
-k1:
-k2_d1, k2_d2, k2_d3:
-k3_d1, k3_d2, k3_d3 sbp0:
+k1: 12245
+k2_d1, k2_d2, k2_d3: 12246
+k3_d1, k3_d2, k3_d3 sbp0: 12247
 k3_d3 sbp1:
 
 ######################################################
@@ -103,7 +103,29 @@ k3_d3 sbp1:
 
 Full training, low-pass validation - 'lpv_m'
 
+k1 : 12236
+k2_d1, k2_d2, k2_d3 : 12237
+k3_d1, k3_d2, k3_d3 sbp0 : 12238
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 12239
+k2_d1, k2_d2, k2_d3: 12240
+k3_d1, k3_d2, k3_d3 sbp0: 12241
+k3_d3 sbp1:
+
 
 ######################################################
 
 Full training, lp validation shifted - 'lpv_sm'
+
+k1 : 12247
+k2_d1, k2_d2, k2_d3 : 12246
+k3_d1, k3_d2, k3_d3 sbp0 : 12245
+k3_d3 sbp1 :
+
+Absolute velocity:
+k1: 12244
+k2_d1, k2_d2, k2_d3: 12243
+k3_d1, k3_d2, k3_d3 sbp0: 12242
+k3_d3 sbp1:

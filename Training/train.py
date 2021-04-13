@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import  matplotlib.pyplot as plt
 import pandas
 import torch
 import numpy as np
@@ -85,7 +85,7 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
 
     writer = get_writer(f'/logs/{output_dir}/cv_run_{1}')
 
-    print(f'starting cv epoch {-1} out of {data.num_of_folds} for model: {model_string}_k_{model_name}')
+    print(f'starting cv epoch {split} out of {data.num_of_folds} for model: {model_string}_{model_name}')
     correlation_monitor.step_number = 0
     if split is not None:
         correlation_monitor.split = split
@@ -109,13 +109,18 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
     regressor.max_correlation = -1000
     if padding:
         regressor.fit(data.train_set[0], data.train_set[1])
-
-    regressor.fit(data.train_set.X, data.train_set.y)
+    # X = data.train_set.X[0]
+    # ffted = np.fft.rfft(X[0, :, 0], n=X.shape[1])
+    # plt.xlabel('frequency [Hz]')
+    # plt.ylabel('|amplitude|')
+    # plt.plot(np.fft.rfftfreq(X.shape[1], 1/250.0), np.abs(ffted))
+    # plt.show()
+    regressor.fit(np.stack(data.train_set.X), np.stack(data.train_set.y))
 
     # best_model = load_model(
     #     f'/models/saved_models/{output_dir}/best_model_split_0')
     torch.save(model.model,
-               home + f'/models/saved_models/{output_dir}/last_model')
+               home + f'/models/saved_models/{output_dir}/last_model_{split}')
     if cuda:
         best_corr = get_corr_coef(correlation_monitor.validation_set, model.model.cuda(device=device))
     else:
@@ -126,11 +131,15 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
 
 def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_folds, trajectory_index, low_pass,
                shift, variable, result_df, max_train_epochs, high_pass=False, high_pass_valid=False,
-               padding=False, cropped=True, low_pass_train=False, shift_by=None, saved_model_dir=f'lr_0.001', whiten=False):
+               padding=False, cropped=True, low_pass_train=False, shift_by=None, saved_model_dir=f'lr_0.001',
+               whiten=False, indices=None):
     best_valid_correlations = []
     # valid_indices = {}
     # train_indices = {}
+    curr_patient_indices = None
     for patient_index in patient_indices:
+        if indices is not None:
+            curr_patient_indices = indices[f'P_{patient_index}']
         input_channels = get_num_of_channels(home + f'/previous_work/P{patient_index}_data.mat')
         model, changed_model, model_name = get_model(input_channels, input_time_length,
                                                      dilations=dilation,
@@ -152,7 +161,8 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
                         low_pass=low_pass,
                         trajectory_index=trajectory_index, shift_data=shift, high_pass=high_pass,
                         shift_by=int(shift_index),
-                        valid_high_pass=high_pass_valid, low_pass_training=low_pass_train, pre_whiten=whiten)
+                        valid_high_pass=high_pass_valid, low_pass_training=low_pass_train, pre_whiten=whiten,
+                        indices=curr_patient_indices)
         # valid_indices[f'P{patient_index}'] = data.valid_indices
         # train_indices[f'P{patient_index}'] = data.train_indices
         output_dir = f'{saved_model_dir}/{model_string}_{model_name}/{model_string}_{model_name}_p_{patient_index}'
@@ -176,21 +186,20 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
                 Path(f'{home}/outputs/{saved_model_dir}/{model_string}_{model_name}/{model_string}_{model_name}').mkdir(
                     parents=True,
                     exist_ok=True)
-                result_df[f'{model_string}_k_{model_name}'] = best_valid_correlations
+                result_df[f'{model_string}_{model_name}'] = best_valid_correlations
                 best_valid_correlations = []
                 result_df.to_csv(f'{home}/outputs/{saved_model_dir}/{model_string}_{model_name}/{model_string}_{model_name}/results.csv', sep=';')
 
         else:
             fold_corrs = []
-            for i in range(data.num_of_folds - 1):
+            for i in range(data.num_of_folds):
                 best_corr = train(data, dilation, kernel_size, lr, patient_index, model_string,
                                   correlation_monitor, output_dir, split=i,
                                   max_train_epochs=max_train_epochs, cropped=cropped)
                 fold_corrs.append(best_corr)
             best_valid_correlations.append(fold_corrs)
-    # train_file = open(f'{home}/models/indices/{model_string}_{model_name}_train.dict', 'wb')
-    # valid_file = open(f'{home}/models/indices/{model_string}_{model_name}_valid.dict', 'wb')
-    # pickle.dump(train_indices, train_file)
-    # pickle.dump(valid_indices, valid_file)
-    # valid_file.close()
-    # train_file.close()
+            print('whole_patient:', patient_index, fold_corrs)
+            patient_df = pandas.DataFrame()
+            patient_df[f'P_{patient_index}'] = fold_corrs
+            result_df = pandas.concat([result_df, patient_df], axis=1)
+            result_df.to_csv(f'{home}/outputs/performances_{data.num_of_folds}/{model_string}_{model_name}/performances.csv', sep=';')

@@ -103,7 +103,7 @@ def visualize_multiple_heat_maps(kernel, dilation):
 
 
 def get_num_of_predictions(kernels, dilations, layer=None):
-    print('made for sbp0')
+    print('made for sbp1')
     if layer == 'conv_spat':
         return 1200 - 10 + 1, 0
 

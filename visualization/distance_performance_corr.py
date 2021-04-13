@@ -78,20 +78,20 @@ def plot_distance_peformance(distance_performance_dicts, labels, title, output_f
 
 
 if __name__ == '__main__':
-    files = [f'{home}/results/test_results/initial_performances.csv', f'{home}/results/test_results/hp_performances.csv',
-             f'{home}/results/test_results/hp_valid_performances.csv', f'{home}/results/test_results/lp_valid_performances.csv',
-             f'{home}/results/test_results/lpt_hpv_performances.csv']
-    # files = [f'{home}/results/test_results/shifted_performances.csv', f'{home}/results/test_results/hp_shifted_performances.csv',
-    #          f'{home}/results/test_results/hp_valid_shifted_performances.csv', f'{home}/results/test_results/lpt_hpv_shifted_performances.csv',
-    #          f'{home}/results/test_results/lpt_hpv_shifted_performances.csv']
+    # files = [f'{home}/results/test_results/initial_performances.csv', f'{home}/results/test_results/hp_performances.csv',
+    #          f'{home}/results/test_results/hp_valid_performances.csv', f'{home}/results/test_results/lp_valid_performances.csv',
+    #          f'{home}/results/test_results/lpt_hpv_performances.csv']
+    files = [f'{home}/results/test_results/shifted_performances.csv', f'{home}/results/test_results/hp_shifted_performances.csv',
+             f'{home}/results/test_results/hp_valid_shifted_performances.csv', f'{home}/results/test_results/lpt_hpv_shifted_performances.csv',
+             f'{home}/results/test_results/lpt_hpv_shifted_performances.csv']
     dicts = []
-    variable = 'absVel'
+    variable = 'vel'
     for file in files:
         df = pandas.read_csv(file, sep=';', index_col=[0])
         df_dict = get_distance_to_performance(df, variable)
         dicts.append(df_dict)
-    title = f'Non-shifted {variable}'
-    output_file = f'{home}/results/test_results/graphs/distance_performance_{variable}.png'
+    title = f'Shifted {variable}'
+    output_file = f'{home}/results/test_results/graphs/distance_shifted_performance_{variable}.png'
     plot_distance_peformance(dicts, ['Full train & valid', 'Hp train & valid', 'Full train & hp valid',
                                      'Full train & lp valid', 'Lp train & hp valid'], title, output_file)
 

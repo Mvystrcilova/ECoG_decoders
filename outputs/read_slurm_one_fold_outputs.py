@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # high-passed normally
     # numbers = [8534, 8533, 8521, 10152, 8888,  8535, 8530, 8529, 10153, 8889]
     # high-order filter
-    numbers = [11804, 11805, 11806, 11757, 11807, 11808, 11809, 11756]
+    # numbers = [11804, 11805, 11806, 11757, 11807, 11808, 11809, 11756]
     # 3rd order filter
     # numbers = [11905, 11907, 11908, 11906, 11909, 11910]
 
@@ -95,8 +95,8 @@ if __name__ == '__main__':
     # numbers = [10178, 10179]
     # high-order filter, test
     # numbers = [11783, 11784, 11785, 11773, 11786, 11787, 11788, 11772]
-    # TODO: 3rd order filter, test
-    # numbers = [11962, 11963, 11964, 11965, 11966, 11967]
+    # 3rd order filter
+    numbers = [12267, 12268, 12269, 12272, 12271, 12270]
 
     # stride before pool False high pass validation on lp training data
     # numbers = [10018, 10019]
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
     # shifted performances
     # numbers = [11434, 11433, 11432, 11431, 10204, 10205, 10206, 10207, 11466, 11467, 10208, 10209, 10210, 10211, 10212, 10213]
-    #  numbers = [11640, 11641, 11642, 11754, 11639, 11638, 11637, 11755]
+    # numbers = [11640, 11641, 11642, 11754, 11639, 11638, 11637, 11755]
 
     # high-passed shifted performaces
     # numbers = [11501, 11502, 11504, 11505, 11517, 11518, 11507, 11503, 11508, 11509, 11510]
@@ -149,7 +149,22 @@ if __name__ == '__main__':
     # pw high-pass valid full data train strong filter shifted
     # numbers = [11943, 11944, 11945, 11946, 11947, 11948]
 
-    numbers = [12069, 12070, 12072, 12073]
+    # numbers = [12069, 12070, 12072, 12073]
+
+    #################  PREWHITENETD NUMBERS #######################
+
+    # initial setting
+    # numbers = [12121, 12122, 12123, 12124, 12125, 12126]
+
+    # shifted setting
+    # numbers = [12133, 12134, 12135, 12136, 12137, 12138]
+
+    # both high-passed strong filter
+    # numbers = [12115, 12116, 12117, 12118, 12119, 12120]
+
+    # both high-passed shifted strong filter
+    # numbers = [12127, 12128, 12129, 12130, 12131, 12132]
+
     files = [f'{home}/outputs/performance/slurm-{number}.out' for number in numbers]
     performances = {}
     for file in files:
@@ -163,5 +178,5 @@ if __name__ == '__main__':
         performances = {**performances, **file_performance}
     df = pandas.DataFrame(performances)
     print(df.shape)
-    df.to_csv(f'{home}/results/test_results/lpv_wide_performances.csv', sep=';')
+    df.to_csv(f'{home}/results/test_results/hpv3_shifted_performances.csv', sep=';')
     print(performances)

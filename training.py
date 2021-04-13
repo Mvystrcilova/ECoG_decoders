@@ -1,4 +1,5 @@
 import argparse
+import pickle
 from pathlib import Path
 import os
 import pandas
@@ -40,25 +41,29 @@ if __name__ == '__main__':
     print(cuda, home)
     set_random_seeds(seed=random_seed, cuda=cuda)
     cropped = True
-    num_of_folds = -1
+    num_of_folds = 5
+    indices = None
+    if num_of_folds != -1:
+        with open(f'{home}/data/train_dict_{num_of_folds}', 'rb') as file:
+            indices = pickle.load(file)
     trajectory_index = args.variable
     learning_rate = 0.001
     low_pass = False
-    shift = False
+    shift = True
     high_pass = False
-    high_pass_valid = False
+    high_pass_valid = True
     add_padding = False
-    low_pass_training = False
+    low_pass_training = True
     whiten = True
-    saved_model_dir = f'lr_{learning_rate}'
+    saved_model_dir = f'lr_{learning_rate}_{num_of_folds}'
     if whiten:
-        saved_model_dir = 'pre_whitened'
+        saved_model_dir = f'pre_whitened_{num_of_folds}'
 
     if trajectory_index == 0:
-        model_string = f'm_vel'
+        model_string = f'pw_lpt_hpv_sm_vel'
         variable = 'vel'
     else:
-        model_string = 'm_absVel'
+        model_string = 'pw_lpt_hpv_sm_absVel'
         variable = 'absVel'
 
     best_valid_correlations = []
@@ -83,7 +88,14 @@ if __name__ == '__main__':
 
         starting_patient_index = args.starting_patient_index
 
-        df = pandas.DataFrame()
+        if os.path.exists(f'{home}/outputs/performances_{num_of_folds}/{model_string}_{model_name}/performances.csv'):
+            df = pandas.read_csv(f'{home}/outputs/performances_{num_of_folds}/{model_string}_{model_name}/performances.csv', sep=';', index_col=0)
+            starting_patient_index = int(df.columns[-1].split('_')[1]) + 1
+            print('dataframe found, starting index:', starting_patient_index)
+        else:
+            Path(f'{home}/outputs/performances_{num_of_folds}/{model_string}_{model_name}/').mkdir(exist_ok=True, parents=True)
+
+            df = pandas.DataFrame()
 
         print(starting_patient_index)
         # for s in shifts2:
@@ -93,4 +105,4 @@ if __name__ == '__main__':
                    num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,
                    variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass=high_pass,
                    high_pass_valid=high_pass_valid, padding=add_padding, cropped=cropped,
-                   low_pass_train=low_pass_training, shift_by=None, saved_model_dir=saved_model_dir, whiten=whiten)
+                   low_pass_train=low_pass_training, shift_by=None, saved_model_dir=saved_model_dir, whiten=whiten, indices=indices)

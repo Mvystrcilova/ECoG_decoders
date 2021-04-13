@@ -216,7 +216,10 @@ def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, sa
             model_file = f'/models/saved_models/{model_name}/{other_model_name}/initial_{other_model_name}'
         else:
             # model_file = f'/models/saved_models/{model_name}/{other_model_name}/last_model'
-            model_file = f'/models/saved_models/{model_name}/{other_model_name}/best_model_split_0'
+            if shift_str != '':
+                model_file = f'/models/saved_models/{model_name}/{other_model_name}/best_model_split_0'
+            else:
+                model_file = f'/models/saved_models/{model_name}/{other_model_name}/last_model'
     output = f'{output_dir}/hp_graphs/{model_name}/{eval_mode}/{trained_mode}/'
     # Path(output).mkdir(parents=True, exist_ok=True)
     model = load_model(model_file)

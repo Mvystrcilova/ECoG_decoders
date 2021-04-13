@@ -107,9 +107,9 @@ class CorrelationMonitor1D(Callback):
             if net.max_correlation < valid_corr:
                 net.max_correlation = valid_corr
                 net.history.record('validation_correlation_best', True)
-                if self.output_dir is not None:
-                    torch.save(net.module,
-                               home + f'/models/saved_models/{self.output_dir}/best_model_split_{self.split}')
+                # if self.output_dir is not None:
+                    # torch.save(net.module,
+                    #            home + f'/models/saved_models/{self.output_dir}/best_model_split_{self.split}')
                 self.validation_set = Dataset(valid_X, valid_y)
 
             else:

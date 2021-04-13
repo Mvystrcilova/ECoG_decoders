@@ -193,7 +193,7 @@ def get_gradients_for_intermediate_layers(select_modules, prefix, file, shift, h
     # phase_grads_list, phase_grads_list_mch, phase_grads_list_nch = [], [], []
     # phase_grads_std = []
     if shift_by is not None:
-        shift_string = f'/shift_{shift_by}/'
+        shift_string = f'shift_{shift_by}'
     else:
         shift_string = ''
     for module_name in select_modules:
@@ -273,6 +273,9 @@ def get_gradients_for_intermediate_layers_from_np_arrays(file, prefix, modules, 
 parser = argparse.ArgumentParser()
 parser.add_argument('--variable', default='vel', type=str)
 parser.add_argument('--channels', default=None, type=str)
+parser.add_argument('--prefixes', default=['hp_m', 'sm'], type=str, nargs=2)
+parser.add_argument('--files', default=1, type=int)
+
 
 if __name__ == '__main__':
     select_modules = ['conv_spat', 'conv_2', 'conv_3', 'conv_4', 'conv_classifier']
@@ -285,17 +288,14 @@ if __name__ == '__main__':
     else:
         trajectory_index = 1
 
-    # files = [f'{variable}_k_3333', f'{variable}_k_2222_dilations_1111',
-    #          f'{variable}_k_2222_dilations_24816', f'{variable}_k_1111', f'{variable}_k_4444',
-    #          f'{variable}_k_2222', f'{variable}_k_3333_dilations_24816']
-    # files2 = [f'{variable}_k_3333_dilations_1111',
-    #            f'{variable}_k_4444_dilations_1111',
-    #           f'{variable}_k_4444_dilations_24816']
-    files = [f'{variable}_k3_d3', f'{variable}_k2_d3',
-             f'{variable}_k1_d3', ]
-    files2 = [f'{variable}_k2_d2', f'{variable}_k3_d1',
-              ]
-    files3 =[f'{variable}_k3_d3']
+    if args.files == 3:
+        files = [f'{variable}_k3_d3']
+    if args.files == 2:
+        files = [f'{variable}_k2_d3', f'{variable}_k2_d1',
+              f'{variable}_k2_d2']
+    if args.files == 1:
+        files = [f'{variable}_k1_d3']
+
     # files3 = [f'{variable}_sbp1_k3_d3']
     whiten = True
     saved_model_dir = 'lr_0.001'
@@ -305,12 +305,11 @@ if __name__ == '__main__':
         saved_model_dir = 'pre_whitened'
         gradient_save_dir = 'all_layer_grads_pw'
 
-
-    prefixes = ['hp_sm']
+    # prefixes = ['m', 'sm']
     # prefixes = ['lp_m', 'lp_sm']
-    shift = [True, True]
-    high_pass = [True]
-
+    # shift = [False, True]
+    # high_pass = [False, False]
+    prefixes = args.prefixes
     low_pass = [False, False, False, False]
 
 
@@ -319,20 +318,25 @@ if __name__ == '__main__':
     eval_modes = ['train']
 
     print(prefixes)
-    for file in files3:
+    for file in files:
         for i, prefix in enumerate(prefixes):
+            if 'h' in prefix:
+                high_pass = False
+            else:
+                high_pass = False
+
+            if 'sm' in prefix:
+                shift = True
+            else:
+                shift = False
+            print(prefix, file, shift, high_pass)
             for train_mode in trained_modes:
                 for eval_mode in eval_modes:
-                    # output_amp = f'{output_dir}/all_layer_grads/{file}/shift_{s}/{prefix}/amps_avg_{prefix}_{file}_{train_mode}_{eval_mode}{m_ch_note}_.png'
-                    # output_phase = f'{output_dir}/all_layer_grads/{file}/shift_{s}/{prefix}/phase_avg_{prefix}_{file}_{train_mode}_{eval_mode}{m_ch_note}.png'
-                    # output_amp = f'{output_dir}/{gradient_save_dir}/{file}/{prefix}/amps_avg_{prefix}_{file}_{train_mode}_{eval_mode}{m_ch_note}_.png'
-
                     # Path(f'{output_dir}/{gradient_save_dir}/{file}/{prefix}/').mkdir(parents=True, exist_ok=True)
                     Path(f'{output_dir}/{gradient_save_dir}/{file}/{prefix}').mkdir(parents=True, exist_ok=True)
-                    X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, amp_grads_std, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch, phase_grads_std = get_gradients_for_intermediate_layers(select_modules, prefix, file=file, shift=shift[i], high_pass=high_pass[i], trajectory_index=trajectory_index, motor_channels=None, low_pass=low_pass[i], shift_by=None, saved_model_dir=saved_model_dir, whiten=whiten, gradient_save_dir=gradient_save_dir)
+                    X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, amp_grads_std, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch, phase_grads_std = get_gradients_for_intermediate_layers(select_modules, prefix, file=file, shift=shift, high_pass=high_pass, trajectory_index=trajectory_index, motor_channels=None, low_pass=low_pass[i], shift_by=None, saved_model_dir=saved_model_dir, whiten=whiten, gradient_save_dir=gradient_save_dir)
                     # X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch = get_gradients_for_intermediate_layers_from_np_arrays(file, prefix, modules=select_modules, train_mode=train_mode, eval_mode=eval_mode, shift_by=s)
                     print(prefix, file, train_mode, eval_mode)
-                    # print('shift:', s)
                     # plot_all_module_gradients(select_modules, X_reshaped_list,
                     #                           [amp_grads_list, amp_grads_list_mch, amp_grads_list_nch],
                     #                           output_file=output_amp, shift_by=s)

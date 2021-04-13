@@ -202,8 +202,8 @@ def get_gradients_for_intermediate_layers(select_modules, prefix, file, shift, h
         amp_grads_nch = np.concatenate(amp_gradient_dict_nch[module_name], axis=1)
         # Path(f'{output_dir}/{gradient_save_dir}/{file}/{shift_string}/{prefix}/phase/{module_name}/').mkdir(parents=True,
         #                                                                                      exist_ok=True)
-        # Path(f'{output_dir}/{gradient_save_dir}/{file}/{shift_string}/{prefix}/amps/{module_name}/').mkdir(parents=True,
-        #                                                                                     exist_ok=True)
+        Path(f'{output_dir}/{gradient_save_dir}/{file}/{shift_string}/{prefix}/amps/{module_name}/').mkdir(parents=True,
+                                                                                            exist_ok=True)
 
         print('saving gradients to:', f'{home}/outputs/{gradient_save_dir}/{file}/{shift_string}/{prefix}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_ALLCH')
         np.save(
@@ -298,7 +298,7 @@ if __name__ == '__main__':
         saved_model_dir = 'pre_whitened'
         gradient_save_dir = 'all_layer_grads_pw'
 
-    prefixes = ['sbp0_hp_m']
+    prefixes = ['sbp0_m']
 
     # shifts6 = [-250, -225, -200, -175, -150, -125]
     # shifts = [-100, -75, -50]
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     print('shifts:', shifts)
     shift = [True, True]
     # high_pass = [False, True]
-    high_pass = [True]
+    high_pass = [False]
     low_pass = [False, False, False, False]
 
     if args.channels is not None:
