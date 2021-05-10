@@ -74,44 +74,44 @@ def plot_gradient_heatmap(gradient_df, title, output, xlabel, ax):
     maximum = max(max(gradient_df[0].max()), max(gradient_df[1].max()), max(gradient_df[2].max()))
     for i, a in enumerate(ax):
         coef = 0.5
-        sns.heatmap(gradient_df[i], cmap='coolwarm', center=0, cbar_kws={'label': 'Gradients'},
+        sns.heatmap(gradient_df[i].iloc[::-1], cmap='coolwarm', center=0, cbar_kws={'label': 'Gradients'},
                     ax=a, vmin=minimum+minimum*-1*coef, vmax=maximum-maximum*coef)
         if i == 0:
-            a.set_ylabel('Frequency Hz')
-        a.set_xlabel(xlabel)
+            a.set_ylabel('Frequency Hz', size=14)
+        a.set_xlabel(xlabel, size=14)
     # if gradient_df.shape[0] > 7:
         locs, labels = plt.yticks()
         labels = np.arange(0, 126, 25)
         locs = np.linspace(min(locs), max(locs), len(labels))
-        a.set_title(title[i])
+        a.set_title(title[i], size=16)
         # plt.yticks(np.arange(0, 125, 1))
-        plt.yticks(locs, labels=labels)
+        plt.yticks(locs, labels=reversed(labels))
         # plt.title(title)
         a.tick_params(
             axis='x',  # changes apply to the x-axis
             which='both',  # both major and minor ticks are affected
             bottom=False,  # ticks along the bottom edge are off
             top=False,  # ticks along the top edge are off
-            labelbottom=True, rotation=75, labelsize=12)
-        plt.tick_params(
+            labelbottom=True, rotation=75, labelsize=15)
+        a.tick_params(
             axis='y',  # changes apply to the x-axis
             which='both',  # both major and minor ticks are affected
             left=False,  # ticks along the bottom edge are off
-            right=False)
+            right=False, labelsize=15)
 
 
 def get_gradient_title(layer, gradient_kind):
-    gradient_title_dict = {'conv_spat': 'Spatial convolution', 'conv_2': 'First convolutional layer',
-                           'conv_3': 'Second convolutional layer', 'conv_4': 'Third convolutional layer',
+    gradient_title_dict = {'conv_spat': 'Spatial convolution', 'conv_2': '\nFirst convolutional layer',
+                           'conv_3': '\nSecond convolutional layer', 'conv_4': '\nThird convolutional layer',
                            'conv_classifier': 'Output layer'}
     if gradient_kind == 'MCH':
         gradient_string = 'Motor channels'
     elif gradient_kind == 'NCH':
-        gradient_string = 'Non-notor channels'
+        gradient_string = 'Non-motor channels'
     else:
         gradient_string = 'All channels'
-    return f' {gradient_string} - {gradient_title_dict[layer]}'
-
+    # return f' {gradient_string} - {gradient_title_dict[layer]}'
+    return f' {gradient_string} - {layer}'
 
 def get_gradient_for_file(file, layer, gradient_kind, variable, prefix, gradient_dir):
     gradient = np.load(
@@ -220,7 +220,7 @@ def model_gradients_heatmap(files, layers, variable, prefix, gradient_dir, saved
         plot_gradient_heatmap(gradient_dfs, titles, output, xlabel='Models', ax=ax)
         plt.tight_layout()
         plt.savefig(output)
-        plt.show()
+        # plt.show()
 
 
 def plot_one_file_heatmap(df, file, variable, layers, gradient_kinds, prefix):
@@ -323,12 +323,13 @@ if __name__ == '__main__':
     prefixes = ['m', 'sm', 'hp_m', 'hp_sm']
     prefixes2 = ['sm']
 
-    # for prefix in prefixes:
-    #     model_gradients_heatmap(files, ['conv_spat'], variable, prefix,
-    #                             'all_layer_gradients2')
-    #     model_gradients_heatmap(files, ['conv_spat'], variable, prefix,
-    #                         'all_layer_grads_pw', saved_models_dir='pre_whitened')
+
+    for prefix in prefixes:
+        model_gradients_heatmap(files, ['conv_spat', 'conv_2', 'conv_3', 'conv_4', 'conv_classifier'], variable, prefix,
+                                'all_layer_gradients2')
+        model_gradients_heatmap(files, ['conv_spat', 'conv_2', 'conv_3', 'conv_4', 'conv_classifier'], variable, prefix,
+                            'all_layer_grads_pw', saved_models_dir='pre_whitened')
     # for p in prefix:
     #     create_shift_gradient_heatmap(p, variable)
-    for variable in ['vel', 'absVel']:
-        plot_one_file_results(f'{variable}_k3_d3', variable)
+    # for variable in ['vel', 'absVel']:
+    #     plot_one_file_results(f'{variable}_k3_d3', variable)

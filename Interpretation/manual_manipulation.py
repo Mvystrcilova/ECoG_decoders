@@ -42,7 +42,7 @@ def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef, output
     plt.xlim(80, 90)
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Gradient')
-    plt.title("{:s} Amplitude Individual Crop Gradients (Corr {:.2f}%)".format(setname, corrcoef * 100))
+    plt.title("Amplitude Individual Crop Gradients (Corr {:.2f}%)".format(setname, corrcoef * 100))
     plt.tight_layout()
     plt.savefig(f'{output_file}/individual_gradients_80_90.png')
 
@@ -55,7 +55,7 @@ def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef, output
     plt.xlim(20, 30)
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Gradient')
-    plt.title("{:s} Amplitude Gradients (Corr {:.2f}%)".format(setname, corrcoef * 100))
+    plt.title("Amplitude Gradients")
     plt.tight_layout()
     plt.savefig(f'{output_file}/individual_gradients_20_30.png', format='png')
     plt.show()

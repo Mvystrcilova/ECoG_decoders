@@ -1,10 +1,13 @@
 from braindecode.models.deep4 import Deep4Net
 from braindecode.training.losses import CroppedLoss
+from braindecode.util import np_to_var
 from torch import nn, optim
+import numpy as np
 from braindecode.models.util import to_dense_prediction_model, get_output_shape
 from torch.nn import functional
 import logging, sys, torch
 from global_config import home
+from torchviz import make_dot
 log = logging.getLogger()
 log.setLevel('DEBUG')
 from torchsummary import summary
@@ -26,6 +29,7 @@ def load_model(model_file):
         if m.__class__.__name__ == 'Conv2d':
             m.padding_mode = 'zeros'
     log.info("Loading done.")
+
     model.double()
     log.info('Double done')
     return model
@@ -50,6 +54,8 @@ def add_padding(model, input_channels):
     new_model.add_module(name='last', module=nn.Linear(n_preds_per_input, 1))
     summary(new_model.cuda(device='cuda'), (85, 1000))
     print(new_model)
+    summary(model, (85, 1200, 1))
+
     return new_model
 
 
@@ -66,7 +72,12 @@ def create_new_model(model, module_name, input_channels=None):
             found_selected = True
             break
     assert found_selected
-    # print(model)
+    print(model)
+    test_input = np_to_var(
+        np.ones((2, 85, 1200, 1), dtype=np.float32))
+    test_out = model(test_input)
+    make_dot(test_out, params=dict(list(model.named_parameters()))).render("rnn_torchviz", format="png")
+    summary(model, (85, 1200, 1))
     # print(new_model)
     return new_model
 
@@ -145,6 +156,11 @@ class Model:
                               input_window_samples=1200,
                               final_conv_length=self.final_conv_lenght,
                               stride_before_pool=stride_before_pool).train()
+        summary(self.model, (85, 1200, 1))
+        test_input = np_to_var(
+            np.ones((2, 85, 1200, 1), dtype=np.float32))
+        test_out = self.model(test_input)
+        make_dot(test_out, params=dict(list(self.model.named_parameters()))).render("rnn_torchviz", format="png")
         # print(self.model)
         self.regressed = False
         self.optimizer = optim.Adam
@@ -162,7 +178,12 @@ class Model:
             self.model = new_model
             to_dense_prediction_model(self.model)
             self.regressed = True
-            # summary(self.model, input_size=(self.input_channels, self.input_time_length, 1))
+            test_input = np_to_var(
+                np.ones((2, 85, 1200, 1), dtype=np.float32))
+            test_out = self.model(test_input)
+            # make_dot(test_out, params=dict(list(self.model.named_parameters()))).render("rnn_torchviz_regressed", format="png")
+            summary(self.model, input_size=(self.input_channels, self.input_time_length, 1))
+            # summary(self.new_model, input_size=(self.input_channels, self.input_time_length, 1))
 
     def get_layer_activations(self, input, activations):
         for name, module in self.model.items():
@@ -176,7 +197,7 @@ class Model:
 
 
 if __name__ == '__main__':
-    model = Model(85, n_classes=1, input_time_length=1000, final_conv_length=2, stride_before_pool=True)
+    model = Model(85, n_classes=1, input_time_length=1200, final_conv_length=2, stride_before_pool=False)
     print(model.model)
     model.make_regressor()
     print(model.model)

@@ -82,20 +82,28 @@ def convolution_pass(input_dict, kernel_size, stride, dilation, input_shape, max
 def visualize_heatmap(arr, file, max_k):
     arr = np.transpose(arr)
     print(arr.shape)
-    arr = arr[:10, :850]
-    sns.heatmap(arr)
-    plt.plot([max_k, max_k], [0, 85], color='red', label='not_shifted')
-    plt.plot([int(max_k/2), int(max_k/2)], [0, 85], color='green', label='shifted')
+    arr = arr[:1, :]
+    sns.heatmap(arr, cmap='coolwarm_r', center=0, cbar_kws={'label': 'Number of computations'})
+    plt.plot([0, 0], [0, 1], color='red', label='begining and end of first crop')
+    plt.plot([max_k+1], [1], color='yellow', marker='o', label='first predicted time-point')
+    plt.plot([max_k, max_k], [0, 1], color='red')
+    plt.plot([int(max_k/2), int(max_k/2)], [0, 1], color='lightgreen', label='receptive field centre')
     plt.legend()
-    plt.xlabel('')
-    plt.title(file)
+    plt.xlabel('Time in samples (250Hz frequency)')
+    locs, labels = plt.xticks()
+    labels = np.arange(0, 1200, 50)
+    locs = np.linspace(min(locs), max(locs), len(labels))
+    plt.xticks(locs, labels=labels)
+    plt.yticks([], [])
+    plt.title('Deep4Net (k3_d3_sbp0)')
     plt.tight_layout()
-    plt.savefig(f'{home}/results/graphs/{file}.png')
+    plt.savefig(f'{home}/results/graphs/{file}.pdf', dpi=250)
     plt.show()
 
 
 def visualize_multiple_heat_maps(kernel, dilation):
-    file = get_name_from_kd(kernel, dilation)
+    # file = get_name_from_kd(kernel, dilation)
+    file = 'rf_k_3333_d_392781_sbb_False_0.npy'
     max_k, max_l = get_num_of_predictions(kernel, dilation)
     smaller_window = input_time_length - max_k + 1
     arr = np.load(f'{home}/outputs/receptive_fields/{file}')
@@ -205,4 +213,9 @@ if __name__ == '__main__':
     #     for dilation in [[3, 9, 27, 81]]:
             #     for dilation in [[1, 1, 1, 1], [2, 4, 8, 16], [3, 9, 27, 81]]:
             # visualize_multiple_heat_maps(kernel, dilation)
-    create_receptive_fields()
+    kernel = [3, 3, 3, 3]
+    dilation = [1, 3, 9, 27]
+    # kernel = [1, 1, 1, 1]
+    # dilation = [1, 1, 1, 1]
+    visualize_multiple_heat_maps(kernel, dilation)
+    # create_receptive_fields()

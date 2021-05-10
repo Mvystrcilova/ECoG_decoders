@@ -49,7 +49,7 @@ if __name__ == '__main__':
     print(cuda, home)
     set_random_seeds(seed=random_seed, cuda=cuda)
     cropped = True
-    low_pass = True
+    low_pass = False
     trajectory_index = args.variable
     num_of_folds = 5
     indices = None
@@ -58,7 +58,7 @@ if __name__ == '__main__':
             indices = pickle.load(file)
     shift = True
     learning_rate = 0.001
-    high_pass = True
+    high_pass = False
     high_pass_valid = False
     low_pass_train = False
 
@@ -68,17 +68,17 @@ if __name__ == '__main__':
     print('high-pass valid:', high_pass_valid)
     print('low-pass train:', low_pass_train)
 
-    whiten = True
+    whiten = False
     saved_model_dir = f'lr_{learning_rate}_{num_of_folds}'
     print('whiten:', whiten)
     if whiten:
         saved_model_dir = f'pre_whitened_{num_of_folds}'
 
     if trajectory_index == 0:
-        model_string = f'pw_hp_sm_vel'
+        model_string = f'abs_sm_vel'
         variable = 'vel'
     else:
-        model_string = 'pw_hp_sm_absVel'
+        model_string = 'hp_sm2_absVel'
         variable = 'absVel'
 
     model_name = ''

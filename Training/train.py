@@ -57,6 +57,8 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
                                           change_conv_layers=conv_dilations is not None, conv_dilations=conv_dilations)
     #     changed_model = add_padding(changed_model, input_channels)
     print('Model not changing!')
+    print(changed_model)
+
     # changed_model = model.model
     return model, changed_model, model_name
 
@@ -157,6 +159,7 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
                 shift_index = int(small_window / 2)
             else:
                 shift_index = int((small_window/2) - shift_by)
+                print('shift_index:', shift_index)
             data = Data(home + f'/previous_work/P{patient_index}_data.mat', num_of_folds=num_of_folds,
                         low_pass=low_pass,
                         trajectory_index=trajectory_index, shift_data=shift, high_pass=high_pass,

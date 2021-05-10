@@ -149,6 +149,7 @@ class CorrelationMonitor1D(Callback):
         else:
             targets_per_trial = [t.detach().numpy()[0] for t in targets_per_trial]
         target_timeseries = np.concatenate(targets_per_trial, axis=0)
-
+        # doing absolute velocity prediction from absolute velocity
+        # if not absolute velocity, remove np.abs
         corr = np.corrcoef(target_timeseries, pred_timeseries)[0, 1]
         return corr

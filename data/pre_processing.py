@@ -150,11 +150,12 @@ def whiten_data(train_set, valid_set=False, channel_normalizations=None, iqrs=No
 class Data:
     def __init__(self, mat_file, num_of_folds, low_pass, trajectory_index, indices=None, shift_data=False, high_pass=False,
                  valid_high_pass=False, shift_by=0, low_pass_training=False, double_training=False, train_indices=None,
-                 valid_indices=None, pre_whiten=False, random_valid=True):
+                 valid_indices=None, pre_whiten=False, random_valid=True, absVel_from_vel=False):
         self.random_valid = random_valid
+        self.absVel_from_vel = absVel_from_vel
         self.pre_whiten = pre_whiten
         self.data = read_mat_file(mat_file)
-        self.indices =  indices
+        self.indices = indices
         self.double_training = double_training
         self.train_indices = train_indices
         self.valid_indices = valid_indices
@@ -192,12 +193,15 @@ class Data:
     def create_datasets(self, trajectory_index=0):
         sessions = self.data.D
         if self.shift_data:
+            if self.shift_by > 0:
+                pass
             Xs = [session[0].ieeg[self.shift_by:] for session in sessions]
             ys = [session[0].traj[:-self.shift_by, trajectory_index] for session in sessions]
         else:
             Xs = [session[0].ieeg[:] for session in sessions]
             ys = [session[0].traj[:, trajectory_index] for session in sessions]
-
+        # if self.absVel_from_vel:
+        #     ys = np.abs(ys)
         print(len(Xs), len(ys))
 
         self.motor_channels = self.data.H.selCh_D_MTR - 1
@@ -336,6 +340,11 @@ class Data:
 
         validation_set = MyDataset([self.train_set.X[i] for i in self.valid_indices],
                                    [self.train_set.y[i] for i in self.valid_indices])
+        # print('Attention! shuffled set')
+        # random_indices = get_random_permutation_with_no_fixed_point(self.valid_indices)
+        # validation_set = MyDataset([self.train_set.X[i] for i in self.valid_indices],
+        #                            [self.train_set.y[self.valid_indices[index]] for index in random_indices])
+
 
         if self.pre_whiten:
             train_set.X, channel_norms, iqr, median = whiten_data(train_set, plot=False)
@@ -353,7 +362,7 @@ class Data:
         if self.low_pass:
             validation_set = self.low_pass_test
         if self.low_pass_training:
-            validation_set = self.low_pass_train
+            train_set = self.low_pass_train
 
         if self.high_pass or self.valid_high_pass:
             X, y = band_pass_data(train_Xs, train_ys, 15, 60, 'hp')
@@ -427,20 +436,34 @@ def concatenate_batches(set, iterator, shuffle):
     return Dataset(complete_input, complete_targets)
 
 
+def get_random_permutation_with_no_fixed_point(indices):
+    while True:
+        v = np.arange(len(indices))
+        for j in np.arange(len(indices) - 1, -1, -1):
+            p = np.random.randint(0, j + 1)
+            if v[p] == j:
+                break
+            else:
+                v[j], v[p] = v[p], v[j]
+        else:
+            if v[0] != 0:
+                print('shuffled indices:', v)
+                return v
+
 if __name__ == '__main__':
     num_of_channels = get_num_of_channels('../previous_work/P1_data.mat')
     with open(f'{home}/data/train_dict_5', 'rb') as file:
         indices = pickle.load(file)
 
-    no_shift_data = Data('../previous_work/P1_data.mat', 5, low_pass=False, trajectory_index=0,
-                         low_pass_training=False,
-                         valid_high_pass=False, shift_by=int(628 / 2), shift_data=False,
-                         pre_whiten=True, high_pass=True, indices=indices['P_1'])
-
-    data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=1, low_pass_training=False,
-                valid_high_pass=False, shift_by=int(628 / 2), shift_data=True)
-    shifted_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0,
-                        shift_data=True, high_pass=False, shift_by=int(628 / 2) - 100)
+    # no_shift_data = Data('../previous_work/P1_data.mat', 5, low_pass=False, trajectory_index=0,
+    #                      low_pass_training=False,
+    #                      valid_high_pass=False, shift_by=int(628 / 2), shift_data=False,
+    #                      pre_whiten=True, high_pass=True, indices=indices['P_1'])
+    #
+    data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0, low_pass_training=False,
+                valid_high_pass=False, shift_data=False)
+    shifted_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=1,
+                        shift_data=False, high_pass=False)
     data.cut_input(1200, 519, False)
     shifted_data.cut_input(1200, 519, False)
     # prev_trainset = data.train_set
@@ -448,14 +471,23 @@ if __name__ == '__main__':
     # non_motor_train_set = data.get_certain_channels(prev_trainset, False)
     # print(motor_train_set.X.shape)
     # print(non_motor_train_set.X.shape)
-    # fig, ax = plt.subplots(3, 1)
+    fig, ax = plt.subplots(1, 2, sharey='row')
     # ax[0].plot(np.arange(0, 1200), data.datasets.X[0][:1200, 0], label='shifted Xs')
-    # ax[0].plot(np.arange(0, 1200), data.datasets.y[0][:1200], label='shifted ys')
-    # ax[0].set_title('Shifted middle')
-    #
+    ax[0].plot(np.arange(0, 1200), data.datasets.y[0][:1200])
+    ax[0].set_title('Velocity')
+    ax[0].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200] - np.abs(data.datasets.y[0][:1200]))
+    ax[0].set_xlabel('Time in samples')
+    ax[0].set_ylabel('Variable value')
+
     # plt.legend()
     # ax[1].plot(np.arange(0, 1200), shifted_data.datasets.X[0][:1200, 0], label= 'shifted Xs')
-    # ax[1].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200], label='shifted ys')
+    ax[1].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200])
+    ax[1].set_title('Absolute velocity')
+    ax[1].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200] - np.abs(data.datasets.y[0][:1200]), label='difference between \nabsolute velocity and\nabsolute value of velocity')
+    ax[1].set_xlabel('Time in samples')
+
+    plt.legend()
+    plt.show()
     # ax[1].set_title('Shifted middle - 100')
     # plt.legend()
     # ax[2].plot(np.arange(0, 1200), no_shift_data.datasets.X[0][:1200, 0], label='shifted Xs')

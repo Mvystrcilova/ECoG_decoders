@@ -32,7 +32,7 @@ def get_corr_coef(dataset, model):
 
     preds_flat = np.concatenate(preds)
     y_flat = np.concatenate(all_y[:, -preds.shape[1]:])
-
+    # corrcoef = np.corrcoef(np.abs(y_flat), np.abs(preds_flat))[0, 1]
     corrcoef = np.corrcoef(y_flat, preds_flat)[0, 1]
     return corrcoef
 

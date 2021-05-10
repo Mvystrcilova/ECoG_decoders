@@ -49,21 +49,24 @@ if __name__ == '__main__':
     trajectory_index = args.variable
     learning_rate = 0.001
     low_pass = False
-    shift = True
+    shift = False
     high_pass = False
-    high_pass_valid = True
+    high_pass_valid = False
     add_padding = False
-    low_pass_training = True
-    whiten = True
-    saved_model_dir = f'lr_{learning_rate}_{num_of_folds}'
+    low_pass_training = False
+    whiten = False
+    if num_of_folds != -1:
+        saved_model_dir = f'lr_{learning_rate}_{num_of_folds}'
+    else:
+        saved_model_dir = f'lr_{learning_rate}'
     if whiten:
         saved_model_dir = f'pre_whitened_{num_of_folds}'
 
     if trajectory_index == 0:
-        model_string = f'pw_lpt_hpv_sm_vel'
+        model_string = f'abs_m_vel'
         variable = 'vel'
     else:
-        model_string = 'pw_lpt_hpv_sm_absVel'
+        model_string = 'abs_m_absVel'
         variable = 'absVel'
 
     best_valid_correlations = []
@@ -78,6 +81,14 @@ if __name__ == '__main__':
     # shifts4 = [175, 200, 225, 250]
     # shifts8 = [150]
     # shifts = shifts6 + shifts4 + shifts3 + shifts7 + shifts2
+    # shifts = [-500, -475, -450]
+    # shifts2 = [-425, -400, -375]
+    # shifts3 = [-350, -325, -300]
+    # shifts4 = [-275, 275, 300]
+    # shifts5 = [325, 350, 375]
+    # shifts6 = [400, 425, 450]
+    # shifts7 = [475, 500]
+    # shifts8 = [-1000]
     model_name = ''
     for dilation in dilations:
         best_valid_correlations = []
@@ -96,10 +107,11 @@ if __name__ == '__main__':
             Path(f'{home}/outputs/performances_{num_of_folds}/{model_string}_{model_name}/').mkdir(exist_ok=True, parents=True)
 
             df = pandas.DataFrame()
-
+        # kernel_size = [3, 3, 3, 3]
         print(starting_patient_index)
         # for s in shifts2:
-
+        #     print('shifting by:', s)
+        #     saved_model_dir = saved_model_dir + f'/shift_{s}/'
         train_nets(model_string, [x for x in range(starting_patient_index, 13)], dilation, kernel_size,
                    lr=learning_rate,
                    num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,

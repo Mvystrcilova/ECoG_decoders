@@ -24,21 +24,7 @@ parser.add_argument("--dilations", default=[3, 9, 27, 81], type=int, nargs=4, he
 parser.add_argument("--starting_patient_index", default=1, type=int, help="Learning rate.")
 parser.add_argument('--variable', default=0, type=int)
 
-
-def get_writer(path='/logs/playing_experiment_1'):
-    writer = SummaryWriter(home + path)
-    # writer.add_graph(model, example_input)
-    return writer
-
-
 activation = {}
-
-
-def get_activation(name):
-    def hook(model, input, output):
-        activation[name] = output.detach()
-
-    return hook
 
 
 if __name__ == '__main__':
@@ -57,9 +43,9 @@ if __name__ == '__main__':
         with open(f'{home}/data/train_dict_{num_of_folds}', 'rb') as file:
             indices = pickle.load(file)
     shift = False
-    high_pass = False
-    high_pass_valid = True
-    train_lowpass = True
+    high_pass = True
+    high_pass_valid = False
+    train_lowpass = False
     learning_rate = 0.001
     saved_model_dir = f'lr_{learning_rate}_{num_of_folds}'
 
@@ -67,10 +53,10 @@ if __name__ == '__main__':
     if whiten:
         saved_model_dir = f'pre_whitened_{num_of_folds}'
     if trajectory_index == 0:
-        model_string = f'pw_lpt_hpv_m_vel'
+        model_string = f'pw_hp_m_vel'
         variable = 'vel'
     else:
-        model_string = 'pw_lpt_hpv_m_absVel'
+        model_string = 'pw_hp_m_absVel'
         variable = 'absVel'
 
     model_name = ''

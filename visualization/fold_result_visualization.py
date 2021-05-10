@@ -17,12 +17,14 @@ def create_df_from_files(files: list, mean=False):
     df = pandas.DataFrame()
     correlation_list = []
     for file in files:
-        file_df = pandas.read_csv(file, sep=';', index_col=0)
-        file_df = file_df.T.drop_duplicates().T
+        file_df = pandas.read_csv(f'{file}/performances.csv', sep=';', index_col=0)
+        # file_df = file_df.T.drop_duplicates().T
         print(file_df.shape)
-        means = file_df.mean().tolist()
+        # means = file_df.mean().tolist()
         correlations = get_df_correlations(file_df)
+        # correlations = means
         if mean:
+            means = file_df.mean().tolist()
             correlation_list.append(means)
             correlations = means
         else:
@@ -36,18 +38,37 @@ def create_df_from_files(files: list, mean=False):
     return df, correlation_list
 
 
-if __name__ == '__main__':
-    variable = 'vel'
-    file_names = [f'm_{variable}_k_1111/{variable}_performance.csv', f'm_{variable}_k_2222/{variable}_performance.csv',
-                  f'm_{variable}_k_3333/{variable}_performance.csv', f'm_{variable}_k_3333_dilations_392781/{variable}_performance.csv',
-                  f'm_{variable}_k_2222_dilations_1111/{variable}_performance.csv', f'm_{variable}_k_3333_dilations_1111/{variable}_performance.csv',
-                  f'm_{variable}_k_2222_dilations_24816/{variable}_performance.csv',
-                  f'm_{variable}_k_3333_dilations_24816/{variable}_performance.csv']
+def get_5_fold_performance_df(variable, prefixes=None):
+    big_df = pandas.DataFrame()
+    if prefixes is None:
+        prefixes = ['m_', 'lp_m_', 'hp_m_', 'hpv_m_', 'lpt_hpv_m_']
+    # prefixes = [f'pw_{prefix}'for prefix in prefixes]
+    file_names = [[f'{home}/outputs/performances_5/{prefix}{variable}_k1_d3',
+                   f'{home}/outputs/performances_5/{prefix}{variable}_k2_d3',
+                   f'{home}/outputs/performances_5/{prefix}{variable}_k3_d3',
+                   f'{home}/outputs/performances_5/{prefix}{variable}_k2_d1',
+                   f'{home}/outputs/performances_5/{prefix}{variable}_k3_d1',
+                   f'{home}/outputs/performances_5/{prefix}{variable}_k2_d2',
+                   f'{home}/outputs/performances_5/{prefix}{variable}_k3_d2'] for prefix in prefixes]
 
-    files = [f'{home}/outputs/performance/{file_name}' for file_name in file_names]
-    df, cols = create_df_from_files(files, True)
-    plt.boxplot(cols, showfliers=False)
-    plt.xticks(numpy.arange(1, df.shape[1]+1), labels=df.columns, rotation=90)
-    plt.tight_layout()
-    plt.savefig(f'{home}/results/{variable}_fold_perfromance.png')
-    plt.show()
+    for i, file_sets in enumerate(file_names):
+        df, cols = create_df_from_files(file_sets, mean=True)
+        big_df = pandas.concat([big_df, df], axis=1)
+    big_df = big_df.loc[:,~big_df.columns.duplicated()]
+    return big_df
+
+
+if __name__ == '__main__':
+    variable = 'absVel'
+    prefixes = ['m_', 'lp_m_', 'hp_m_', 'hpv_m_', 'lpt_hpv_m_']
+    file_names = [[f'{home}/outputs/performances_5/{prefix}{variable}_k1_d3', f'{home}/outputs/performances_5/{prefix}{variable}_k2_d3', f'{home}/outputs/performances_5/{prefix}{variable}_k3_d3', f'{home}/outputs/performances_5/{prefix}{variable}_k2_d1',
+                 f'{home}/outputs/performances_5/{prefix}{variable}_k3_d1', f'{home}/outputs/performances_5/{prefix}{variable}_k2_d2', f'{home}/outputs/performances_5/{prefix}{variable}_k3_d3'] for prefix in prefixes]
+
+    for i, file_sets in enumerate(file_names):
+        df, cols = create_df_from_files(file_sets)
+
+        plt.boxplot(cols, showfliers=False)
+        plt.xticks(numpy.arange(1, df.shape[1]+1), labels=df.columns, rotation=90)
+        plt.tight_layout()
+        plt.savefig(f'{home}/results/performances_5/{prefixes[i]}{variable}_fold_perfromance.png')
+        plt.show()
