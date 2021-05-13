@@ -12,7 +12,6 @@ trained_mode = 'trained'
 vel_string = 'vel'
 absVel_string = 'absVel'
 
-
 def get_model_name_from_kernel_and_dilation(kernel_size, dilation):
     """
     Function returning the standardized name of the model based on the provided kernel

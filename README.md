@@ -19,16 +19,35 @@ for the `slurm` environment which is present in the `gpulab` at MFF UK.
 The following commands can be used to run a bash script:
 
 ```
+git clone git@github.com:Mvystrcilova/ECoG_decoders.git # clone the repository
+
 cd ECoG_decoders
 sbatch bash_scripts/{insert bash script here}
 ```
 
+The Python scripts can be also run directly in the following way:
+As stated before, the dataset is publicly unavailable and without the data
+the scripts do not run. 
+Therefore, we created parameter which creates a dummy dataset when set to `True`
+It always creates the dataset with each run, therefore, the dataset does not need to be downloaded.
+
+```
+git clone git@github.com:Mvystrcilova/ECoG_decoders.git # clone the repository
+
+cd ECoG_decoders
+
+pip3 -r install requirements.txt
+python3 training.py --dummy_dataset=True
+```
+
+The models trained and validated on the full dataset are available [here](https://drive.google.com/drive/folders/1KFZ8MlRURG-IrWrEkoDlWqECfNxTZfHm?usp=sharing).
 
 ### Training scripts
 
 There are four training scripts, namely `training.py`, 
 `shifted_training.py`, `high_pass_training.py` and `pre_whitened_trainig`.
 All four of these scripts have the same functionalities. 
+Except the `training.py` script which also has the option of using the *dummy_dataset*.
 While only one script would be sufficient, we created three because
 when running them in the `gpulab`, at any time, the process can be 
 canceled and then restarted from the beginning. 

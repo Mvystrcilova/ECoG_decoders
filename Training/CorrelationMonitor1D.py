@@ -83,7 +83,7 @@ class CorrelationMonitor1D(Callback):
         return preds_per_trial
 
     def on_epoch_end(self, net, **kwargs):
-        writer = net.callbacks[2][1].writer
+        # writer = net.callbacks[2][1].writer
         train_X = kwargs['dataset_train'].X
         train_y = kwargs['dataset_train'].y
         valid_X = kwargs['dataset_valid'].X
@@ -96,13 +96,13 @@ class CorrelationMonitor1D(Callback):
         valid_corr = self.calculate_correlation(valid_preds, valid_y, valid_X)
         names = ['train_correlation', 'validation_correlation']
         if 'test' in kwargs.keys():
-            writer.add_scalar('test_correlation', train_corr, 0)
-            writer.flush()
+        #     writer.add_scalar('test_correlation', train_corr, 0)
+        #     writer.flush()
             print(f'test_correlation: {train_corr}')
         else:
             for name, value in zip(names, [train_corr, valid_corr]):
-                writer.add_scalar(name, value, self.step_number)
-                writer.flush()
+                # writer.add_scalar(name, value, self.step_number)
+                # writer.flush()
                 net.history.record(name, value)
             if net.max_correlation < valid_corr:
                 net.max_correlation = valid_corr

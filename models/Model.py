@@ -7,7 +7,7 @@ from braindecode.models.util import to_dense_prediction_model, get_output_shape
 from torch.nn import functional
 import logging, sys, torch
 from global_config import home
-from torchviz import make_dot
+# from torchviz import make_dot
 
 log = logging.getLogger()
 log.setLevel('DEBUG')
@@ -190,12 +190,12 @@ class Model:
             self.regressed = True
             # uncomment section below if interested in the regressed model details
 
-            test_input = np_to_var(
-                np.ones((2, 85, 1200, 1), dtype=np.float32))
-            test_out = self.model(test_input)
-            make_dot(test_out, params=dict(list(self.model.named_parameters()))).render("rnn_torchviz_regressed", format="png")
-            summary(self.model, input_size=(self.input_channels, self.input_time_length, 1))
-            summary(self.new_model, input_size=(self.input_channels, self.input_time_length, 1))
+            # test_input = np_to_var(
+            #     np.ones((2, 85, 1200, 1), dtype=np.float32))
+            # test_out = self.model(test_input)
+            # make_dot(test_out, params=dict(list(self.model.named_parameters()))).render("rnn_torchviz_regressed", format="png")
+            # summary(self.model, input_size=(self.input_channels, self.input_time_length, 1))
+            # summary(self.new_model, input_size=(self.input_channels, self.input_time_length, 1))
 
 
 if __name__ == '__main__':

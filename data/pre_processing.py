@@ -4,6 +4,8 @@ import random
 import mat73
 import numpy as np
 import scipy
+from random import gauss
+
 from braindecode.util import np_to_var
 from skorch.dataset import CVSplit, Dataset
 from Training.CropsFromTrialsIterator import CropsFromTrialsIterator
@@ -19,7 +21,9 @@ def read_mat_file(mat_file):
     return data
 
 
-def get_num_of_channels(mat_file):
+def get_num_of_channels(mat_file, dummy_dataset=False):
+    if dummy_dataset:
+        return 85
     data = read_mat_file(mat_file)
     session = data.D[0]
     return session[0].ieeg.shape[1]
@@ -187,7 +191,7 @@ class Data:
     def __init__(self, mat_file, num_of_folds, low_pass, trajectory_index, indices=None, shift_data=False,
                  high_pass=False,
                  valid_high_pass=False, shift_by=0, low_pass_training=False, double_training=False, train_indices=None,
-                 valid_indices=None, pre_whiten=False, random_valid=True, absVel_from_vel=False):
+                 valid_indices=None, pre_whiten=False, random_valid=True, absVel_from_vel=False, dummy_dataset=False):
         """
 
         :param mat_file: a Matlab which holds the data
@@ -214,7 +218,11 @@ class Data:
         self.random_valid = random_valid
         self.absVel_from_vel = absVel_from_vel
         self.pre_whiten = pre_whiten
-        self.data = read_mat_file(mat_file)
+        self.dummy_dataset = dummy_dataset
+        if not self.dummy_dataset:
+            self.data = read_mat_file(mat_file)
+        else:
+            self.data = None
         self.indices = indices
         self.double_training = double_training
         self.train_indices = train_indices
@@ -262,24 +270,40 @@ class Data:
         :param trajectory_index: Selects velocity with 0 and absolute velocity with 1
         :return:
         """
-        sessions = self.data.D
-        if self.shift_data:
-            if self.shift_by > 0:
-                pass
-            Xs = [session[0].ieeg[self.shift_by:] for session in sessions]
-            ys = [session[0].traj[:-self.shift_by, trajectory_index] for session in sessions]
+        if not self.dummy_dataset:
+            sessions = self.data.D
+            if self.shift_data:
+                Xs = [session[0].ieeg[self.shift_by:] for session in sessions]
+                ys = [session[0].traj[:-self.shift_by, trajectory_index] for session in sessions]
+            else:
+                Xs = [session[0].ieeg[:] for session in sessions]
+                ys = [session[0].traj[:, trajectory_index] for session in sessions]
+            # if self.absVel_from_vel:
+            #     ys = np.abs(ys)
+            print(len(Xs), len(ys))
+
+            self.motor_channels = self.data.H.selCh_D_MTR - 1
+            self.non_motor_channels = self.data.H.selCh_D_CTR - 1
+
+            if self.num_of_folds == 0:
+                self.num_of_folds = len(Xs)
         else:
-            Xs = [session[0].ieeg[:] for session in sessions]
-            ys = [session[0].traj[:, trajectory_index] for session in sessions]
-        # if self.absVel_from_vel:
-        #     ys = np.abs(ys)
-        print(len(Xs), len(ys))
+            print('creating dummy dataset')
+            Xs = []
+            ys = []
+            for i in range(32):
+                ieeg = np.zeros([7500, 85])
+                for row in range(85):
+                    series = [gauss(0.0, 1.0) for i in range(7500)]
+                    ieeg[:, row] = series
+                traj = np.zeros([7500])
+                series = [gauss(0.0, 1.0) for i in range(7500)]
+                traj[:] = series
+                Xs.append(ieeg)
+                ys.append(traj)
+            self.motor_channels = None
+            self.non_motor_channels = None
 
-        self.motor_channels = self.data.H.selCh_D_MTR - 1
-        self.non_motor_channels = self.data.H.selCh_D_CTR - 1
-
-        if self.num_of_folds == 0:
-            self.num_of_folds = len(Xs)
         dataset = Dataset(Xs, ys)
 
         return dataset
@@ -545,7 +569,8 @@ if __name__ == '__main__':
     #                      pre_whiten=True, high_pass=True, indices=indices['P_1'])
     #
     data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0, low_pass_training=False,
-                valid_high_pass=False, shift_data=False)
+                valid_high_pass=False, shift_data=False, dummy_dataset=True)
+
     shifted_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=1,
                         shift_data=False, high_pass=False)
     data.cut_input(1200, 519, False)

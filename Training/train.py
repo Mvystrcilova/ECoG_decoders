@@ -8,7 +8,6 @@ from braindecode import EEGRegressor
 from braindecode.models.util import get_output_shape
 from braindecode.util import np_to_var
 from skorch.callbacks import TensorBoard, Checkpoint
-from torch.utils.tensorboard import SummaryWriter
 
 from Interpretation.interpretation import get_corr_coef
 from Training.CorrelationMonitor1D import CorrelationMonitor1D
@@ -17,11 +16,6 @@ from data.pre_processing import Data, get_num_of_channels
 from global_config import home, input_time_length, cuda, get_model_name_from_kernel_and_dilation
 from models.Model import load_model, change_network_kernel_and_dilation, Model, add_padding
 
-
-def get_writer(path='/logs/playing_experiment_1'):
-    writer = SummaryWriter(home + path)
-    # writer.add_graph(model, example_input)
-    return writer
 
 
 def test_input(input_channels, model):
@@ -101,7 +95,6 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
     # as part of the cut_input method
     data.cut_input(input_time_length=input_time_length, n_preds_per_input=n_preds_per_input, shuffle=False)
 
-    writer = get_writer(f'/logs/{output_dir}/cv_run_{1}')
 
     print(f'starting cv epoch {split} out of {data.num_of_folds} for model: {model_string}_{model_name}')
     correlation_monitor.step_number = 0
@@ -113,7 +106,7 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
     monitors = [('correlation monitor', correlation_monitor), ('checkpoint', Checkpoint(monitor=monitor,
                                                                                         f_history=home + f'/logs/model_{model_name}/histories/{model_string}_k_{model_name}_p_{patient_index}.json',
                                                                                         )),
-                ('tensorboard', TensorBoard(writer, ))]
+                ]
     # cropped=False
     print('cropped:', cropped)
 
@@ -148,7 +141,7 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
 def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_folds, trajectory_index, low_pass,
                shift, variable, result_df, max_train_epochs, high_pass=False, high_pass_valid=False,
                padding=False, cropped=True, low_pass_train=False, shift_by=None, saved_model_dir=f'lr_0.001',
-               whiten=False, indices=None):
+               whiten=False, indices=None, dummy_dataset=False):
     """
     Performs num_of_folds cross-validation on each of the patients
     :param model_string: specifies the setting in which the model was trained
@@ -180,10 +173,17 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
     # valid_indices = {}
     # train_indices = {}
     curr_patient_indices = None
+    if dummy_dataset:
+        patient_indices = [1]
     for patient_index in patient_indices:
         if indices is not None:
             curr_patient_indices = indices[f'P_{patient_index}']
-        input_channels = get_num_of_channels(home + f'/previous_work/P{patient_index}_data.mat')
+        if dummy_dataset:
+            data_file = f'{home}/data/dummy_dataset.mat'
+        else:
+            data_file = f'{home}/previous_work/P{patient_index}_data.mat'
+        print('data_file', data_file)
+        input_channels = get_num_of_channels(data_file, dummy_dataset=dummy_dataset)
         model, changed_model, model_name = get_model(input_channels, input_time_length,
                                                      dilations=dilation,
                                                      kernel_sizes=kernel_size, padding=padding)
@@ -201,12 +201,13 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
             else:
                 shift_index = int((small_window/2) - shift_by)
                 print('shift_index:', shift_index)
-            data = Data(home + f'/previous_work/P{patient_index}_data.mat', num_of_folds=num_of_folds,
+            print('dummy dataset', dummy_dataset)
+            data = Data(data_file, num_of_folds=num_of_folds,
                         low_pass=low_pass,
                         trajectory_index=trajectory_index, shift_data=shift, high_pass=high_pass,
                         shift_by=int(shift_index),
                         valid_high_pass=high_pass_valid, low_pass_training=low_pass_train, pre_whiten=whiten,
-                        indices=curr_patient_indices)
+                        indices=curr_patient_indices, dummy_dataset=dummy_dataset)
         # valid_indices[f'P{patient_index}'] = data.valid_indices
         # train_indices[f'P{patient_index}'] = data.train_indices
         output_dir = f'{saved_model_dir}/{model_string}_{model_name}/{model_string}_{model_name}_p_{patient_index}'
