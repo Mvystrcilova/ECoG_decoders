@@ -17,3 +17,4 @@ outputs/shifted_graphs
 *.npy
 outputs/all_layer_gradients
 outputs/all_layer_grads
+double_traning.py

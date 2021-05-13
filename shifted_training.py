@@ -6,7 +6,7 @@ import pandas
 import pickle
 
 from Training.train import train_nets
-from global_config import home, random_seed, cuda, get_model_name_from_kernel_and_dilation
+from global_config import home, random_seed, cuda, get_model_name_from_kernel_and_dilation, vel_string, absVel_string
 import torch
 from braindecode.util import set_random_seeds
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -25,21 +25,11 @@ parser.add_argument("--starting_patient_index", default=1, type=int, help="Learn
 parser.add_argument('--variable', default=0, type=int)
 
 
-def get_writer(path='/logs/playing_experiment_1'):
-    writer = SummaryWriter(home + path)
-    # writer.add_graph(model, example_input)
-    return writer
-
-
-activation = {}
-
-
-def get_activation(name):
-    def hook(model, input, output):
-        activation[name] = output.detach()
-
-    return hook
-
+""" 
+This script allows to specify the configurations of the networks and datasets that 
+are being trained. Even though it is called shifted_training.py it can be used to train any 
+network on any dataset based on the parameters. The parameters are explained in Documentation.md
+"""
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -75,11 +65,11 @@ if __name__ == '__main__':
         saved_model_dir = f'pre_whitened_{num_of_folds}'
 
     if trajectory_index == 0:
-        model_string = f'abs_sm_vel'
-        variable = 'vel'
+        model_string = f'abs_m_{vel_string}'
+        variable = vel_string
     else:
-        model_string = 'hp_sm2_absVel'
-        variable = 'absVel'
+        model_string = f'abs_m_{absVel_string}'
+        variable = absVel_string
 
     model_name = ''
 

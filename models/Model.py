@@ -8,6 +8,7 @@ from torch.nn import functional
 import logging, sys, torch
 from global_config import home
 from torchviz import make_dot
+
 log = logging.getLogger()
 log.setLevel('DEBUG')
 from torchsummary import summary
@@ -36,6 +37,12 @@ def load_model(model_file):
 
 
 def add_padding(model, input_channels):
+    """
+    intended to add padding to the model, not a part of the thesis.
+    :param model:
+    :param input_channels:
+    :return:
+    """
     new_model = nn.Sequential()
     i = 0
     last_out = None
@@ -43,7 +50,7 @@ def add_padding(model, input_channels):
         if hasattr(module, "dilation") and hasattr(module, 'kernel_size') and ('spat' not in name):
             dilation = module.dilation
             kernel_size = module.kernel_size
-            right_padding = 0,  0,  0, (kernel_size[0] - 1) * dilation[0]
+            right_padding = 0, 0, 0, (kernel_size[0] - 1) * dilation[0]
             new_model.add_module(name=f'{name}_pad', module=nn.ZeroPad2d(padding=right_padding))
 
             module.stride = (2, 1)
@@ -73,19 +80,13 @@ def create_new_model(model, module_name, input_channels=None):
             break
     assert found_selected
     print(model)
-    test_input = np_to_var(
-        np.ones((2, 85, 1200, 1), dtype=np.float32))
-    test_out = model(test_input)
-    make_dot(test_out, params=dict(list(model.named_parameters()))).render("rnn_torchviz", format="png")
-    summary(model, (85, 1200, 1))
+    # test_input = np_to_var(
+    #     np.ones((2, 85, 1200, 1), dtype=np.float32))
+    # test_out = model(test_input)
+    # make_dot(test_out, params=dict(list(model.named_parameters()))).render("rnn_torchviz", format="png")
+    # summary(model, (85, 1200, 1))
     # print(new_model)
     return new_model
-
-
-def create_double_model(model1, model2):
-    new_model = nn.Sequential()
-
-
 
 
 def test_padding():
@@ -99,14 +100,18 @@ def test_padding():
     print(out.shape)
 
 
-def change_network_stride(model, kernel_sizes=None, dilations=None, remove_maxpool=False, change_conv_layers=False, conv_dilations=None):
+def change_network_kernel_and_dilation(model, kernel_sizes=None, dilations=None, remove_maxpool=False):
+    """
+    changes the dilation and kernel sizes of the given model based on the given kernel sizes and dilations
+
+    :return:
+    """
     if kernel_sizes is None:
         kernel_sizes = [3, 3, 3, 3]
 
     new_model = nn.Sequential()
     strides = [1, 1, 1, 1]
     i = 0
-    j = 0
     for name, child in model.named_children():
         # print(name)
         add = True
@@ -114,9 +119,14 @@ def change_network_stride(model, kernel_sizes=None, dilations=None, remove_maxpo
             add = False
             if dilations is None:
                 if not remove_maxpool:
-                    new_model.add_module(f'pool_{i}', nn.MaxPool2d(kernel_size=(kernel_sizes[i], 1), stride=(strides[i], 1), padding=child.padding, dilation=child.dilation, ceil_mode=child.ceil_mode))
+                    new_model.add_module(f'pool_{i}',
+                                         nn.MaxPool2d(kernel_size=(kernel_sizes[i], 1), stride=(strides[i], 1),
+                                                      padding=child.padding, dilation=child.dilation,
+                                                      ceil_mode=child.ceil_mode))
             else:
-                new_model.add_module(f'pool_{i}', nn.MaxPool2d(kernel_size=(kernel_sizes[i], 1), stride=(strides[i], 1), padding=child.padding, dilation=(dilations[i], 1), ceil_mode=child.ceil_mode))
+                new_model.add_module(f'pool_{i}', nn.MaxPool2d(kernel_size=(kernel_sizes[i], 1), stride=(strides[i], 1),
+                                                               padding=child.padding, dilation=(dilations[i], 1),
+                                                               ceil_mode=child.ceil_mode))
             print('previous', name, child.stride, child.kernel_size)
             print('now', name, strides[i], kernel_sizes[i])
             i += 1
@@ -127,16 +137,11 @@ def change_network_stride(model, kernel_sizes=None, dilations=None, remove_maxpo
 
 
 def squeeze_out(x):
-    # print(x.size())
     assert x.size()[1] == 1 and x.size()[3] == 1
     return x[:, 0, :, 0]
 
 
-def add_layer_to_graph(name, layer):
-    pass
-
-
-### From braindecode library 0.4.85
+# From braindecode library 0.4.85
 class Expression(nn.Module):
     def __init__(self, expression_fn):
         super(Expression, self).__init__()
@@ -156,17 +161,22 @@ class Model:
                               input_window_samples=1200,
                               final_conv_length=self.final_conv_lenght,
                               stride_before_pool=stride_before_pool).train()
-        summary(self.model, (85, 1200, 1))
-        test_input = np_to_var(
-            np.ones((2, 85, 1200, 1), dtype=np.float32))
-        test_out = self.model(test_input)
-        make_dot(test_out, params=dict(list(self.model.named_parameters()))).render("rnn_torchviz", format="png")
+        # summary(self.model, (85, 1200, 1))
+        # test_input = np_to_var(
+        #     np.ones((2, 85, 1200, 1), dtype=np.float32))
+        # test_out = self.model(test_input)
+        # make_dot(test_out, params=dict(list(self.model.named_parameters()))).render("rnn_torchviz", format="png")
         # print(self.model)
         self.regressed = False
         self.optimizer = optim.Adam
         self.loss_function = torch.nn.MSELoss
 
     def make_regressor(self):
+        """
+        Transforms the model from a network suited for classification into a network suited
+        for regression by removing the last softmax layer
+        :return:
+        """
         if not self.regressed:
             new_model = nn.Sequential()
             for name, module in self.model.named_children():
@@ -178,25 +188,20 @@ class Model:
             self.model = new_model
             to_dense_prediction_model(self.model)
             self.regressed = True
+            # uncomment section below if interested in the regressed model details
+
             test_input = np_to_var(
                 np.ones((2, 85, 1200, 1), dtype=np.float32))
             test_out = self.model(test_input)
-            # make_dot(test_out, params=dict(list(self.model.named_parameters()))).render("rnn_torchviz_regressed", format="png")
+            make_dot(test_out, params=dict(list(self.model.named_parameters()))).render("rnn_torchviz_regressed", format="png")
             summary(self.model, input_size=(self.input_channels, self.input_time_length, 1))
-            # summary(self.new_model, input_size=(self.input_channels, self.input_time_length, 1))
-
-    def get_layer_activations(self, input, activations):
-        for name, module in self.model.items():
-            x = module(input)
-            if name in activations.keys():
-                activations[name].append(x)
-            else:
-                activations[name] = [x]
-        return activations
-        # summary(new_model, (85, 1200))
+            summary(self.new_model, input_size=(self.input_channels, self.input_time_length, 1))
 
 
 if __name__ == '__main__':
+    """
+    Toy examples of testing the Model class.
+    """
     model = Model(85, n_classes=1, input_time_length=1200, final_conv_length=2, stride_before_pool=False)
     print(model.model)
     model.make_regressor()

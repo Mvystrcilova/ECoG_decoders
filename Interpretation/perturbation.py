@@ -12,6 +12,8 @@ from data.pre_processing import Data
 from global_config import home, input_time_length, n_perturbations, output_dir, srate
 from matplotlib import pyplot as plt
 
+""" Perturbation analysis by Kay Hartmann"""
+
 
 class SelectiveSequential(nn.Module):
     def __init__(self, to_select, modules_list):

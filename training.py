@@ -5,7 +5,7 @@ import os
 import pandas
 
 from Training.train import train_nets
-from global_config import home, random_seed, cuda, get_model_name_from_kernel_and_dilation
+from global_config import home, random_seed, cuda, get_model_name_from_kernel_and_dilation, vel_string, absVel_string
 import torch
 from braindecode.util import set_random_seeds
 
@@ -19,21 +19,16 @@ activations = {}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--kernel_size", default=[3, 3, 3, 3], type=int, nargs=4, help="Render some episodes.")
-parser.add_argument("--dilations", default=[3, 9, 27, 81], type=int, nargs=4, help="Random seed.")
+parser.add_argument("--dilations", default=[1, 3, 9, 27], type=int, nargs=4, help="Random seed.")
 parser.add_argument("--starting_patient_index", default=1, type=int, help="Learning rate.")
 parser.add_argument('--variable', default=0, type=int)
 
-activation = {}
-
-
-def get_activation(name):
-    def hook(model, input, output):
-        activation[name] = output.detach()
-
-    return hook
-
 
 if __name__ == '__main__':
+    """
+    This script allows to specify the configurations of the networks and datasets that 
+    are being trained. The parameters are explained in Documentation.md
+    """
     args = parser.parse_args()
     input_time_length = 1200
     max_train_epochs = 100
@@ -63,11 +58,11 @@ if __name__ == '__main__':
         saved_model_dir = f'pre_whitened_{num_of_folds}'
 
     if trajectory_index == 0:
-        model_string = f'abs_m_vel'
-        variable = 'vel'
+        model_string = f'm_{vel_string}'
+        variable = vel_string
     else:
-        model_string = 'abs_m_absVel'
-        variable = 'absVel'
+        model_string = f'm_{absVel_string}'
+        variable = absVel_string
 
     best_valid_correlations = []
     dilations = [None, [1, 1, 1, 1], [2, 4, 8, 16]]

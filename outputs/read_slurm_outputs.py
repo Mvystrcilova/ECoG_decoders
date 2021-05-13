@@ -4,6 +4,12 @@ import pandas
 
 from global_config import home
 
+"""
+Parsers able to read the outputs of slurm files when the network is trained
+on a Data object with parameter num_of_folds different than -1. 
+Not used as part of the thesis.
+"""
+
 
 def get_results(file, starting_patient):
     f = open(file, 'r')
@@ -42,7 +48,6 @@ def get_results_from_one_file(file_number):
                 df.to_csv(f'{home}/performances/{model_name}.csv', sep=';')
     Path(f'{home}/outputs/performances/{model_name}/').mkdir(exist_ok=True, parents=True)
     df.to_csv(f'{home}/outputs/performances/{model_name}/performances.csv', sep=';')
-
 
 
 if __name__ == '__main__':

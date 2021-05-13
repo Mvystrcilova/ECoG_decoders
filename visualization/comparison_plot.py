@@ -1,20 +1,18 @@
 import itertools
 import pandas
 import matplotlib.pyplot as plt
-from scipy.stats import binom_test, wilcoxon, ttest_rel
 import seaborn as sns
 from global_config import home
-from visualization.fold_result_visualization import get_5_fold_performance_df
+from visualization.fold_result_visualization import get_5_fold_performance_df, get_statistical_significance
 
 
-def plot_single_plot(df, shifts, variable, title):
+def plot_single_plot(df, shifts, variable):
     sub_df = df[[column for column in df.columns if (variable in column)]]
     for column in sub_df.columns:
         sub_df.loc[:, column] = sub_df[column].astype(float)
     sns.boxplot(data=sub_df, palette="coolwarm")
     ticks, labels = plt.xticks()
     plt.xticks(ticks=ticks, labels=shifts)
-    # plt.title(title)
     plt.tick_params('y', labelsize=13)
     plt.tick_params('x', labelrotation=75, labelsize=13)
     plt.ylabel('Correlation coefficient', size=13)
@@ -26,31 +24,21 @@ def plot_single_plot(df, shifts, variable, title):
     plt.show()
 
 
-def get_statistical_significance(random_correlations, correlations, alternative='greater'):
-    # success = [1 if corr > random_corr else 0 for corr, random_corr in zip(correlations, random_correlations)]
-    # p = binom_test(x=sum(success), n=len(success), p=0.05, alternative='greater')
-    # value, p = ttest_rel(correlations, random_correlations, )
-    value, p = wilcoxon(correlations, random_correlations, correction=True, alternative=alternative)
-    string = ''
-    # if alternative == 'greater':
-    #     if (p / 2 < 0.05) and (value > 0):
-    #         string = ' *'
-    #     if (p / 2 < 0.01) and (value > 0):
-    #         string = ' **'
-    # else:
-    #     if (p / 2 < 0.05) and (value < 0):
-    #         string = ' *'
-    #     if (p / 2 < 0.01) and (value < 0):
-    #         string = ' **'
-
-    if (p / 2 < 0.05) :
-        string = ' *'
-    if (p / 2 < 0.01) :
-        string = ' **'
-    return string
 
 
-def plot_quadruple_plot(df, prefixes, variable, titles, chance_level, file_prefix):
+def plot_quadruple_plot(df: pandas.DataFrame, prefixes: list, variable: str, titles: list,
+                        chance_level: pandas.DataFrame, file_prefix: str):
+    """
+    Function to plotting boxplots for columns in the df.
+    :param df: pandas.DataFrame where the columns hold average performances for each of the
+    12 patients for the different models
+    :param prefixes: prefixes of the models which are to be plotted
+    :param variable: 'vel' or 'absVel' based on if we want to plot results for velocity or absolute velocity
+    :param titles: 'Titles of the subplots'
+    :param chance_level: a pandas.DataFrame containing chance-level decoding values for
+    :param file_prefix: prefix under which the plot should be saved
+    :return: None
+    """
     fig, ax = plt.subplots(2, 5, sharey='row', figsize=(len(titles) * 4 , (int(len(titles)*2)+6)),
                            gridspec_kw={'width_ratios': [1, 1, 0.1, 1, 1]})
     # assert len(prefixes) == int(len(titles))

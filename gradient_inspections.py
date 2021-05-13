@@ -63,9 +63,18 @@ def plot_all_module_gradients(titles, batch_X, gradients, output_file, shift_by)
 
 
 def get_module_gradients(model, module_name, X_reshaped, small_window):
-    print("Module {:s}...".format(module_name))
-    ## Create new model
+    """
 
+    :param model: model for which we visualize the gradients
+    :param module_name: name of the layer for which we visualize the gradients
+    :param X_reshaped: single batch on which the gradients are calculated
+    :param small_window: if not None, the input window will be cropped to match the size of the small window,
+    else, twice the size of the receptive field of the network
+    :return: the gradients for amplitudes, phases and the size of the input window
+    """
+    print("Module {:s}...".format(module_name))
+    # Modify the existing model so that the module for which we want to get the gradients
+    # is the output layer
     new_model = torch.nn.Sequential()
     found_selected = False
     for name, child in model.named_children():
@@ -140,13 +149,34 @@ def get_module_gradients(model, module_name, X_reshaped, small_window):
 
 def get_gradients_for_intermediate_layers(select_modules, prefix, file, shift, high_pass, trajectory_index, motor_channels,
                                           low_pass, shift_by, saved_model_dir, whiten, gradient_save_dir):
+    """
+    Calculates and saves gradients for each patient for each module for each channel
+    type (motor, non-motor, all channels)
+
+    :param select_modules: layers for which the gradients should be calculated
+    :param prefix: specifies the setting in which the model was trained
+    :param file: the name of the model without the prefix
+    :param shift: specifies if the data on which we are calculating the gradients should be shifted
+    :param high_pass: specifies if the data on which we are calculating the gradients should be high-passed
+    :param trajectory_index: specifies if we are inspecting a model trained to decode velocity or absolute velocity
+    :param motor_channels: TODO: should be removed
+    :param low_pass: specifies if the data on which we are calculating the gradients should be low-passed
+    :param shift_by: specifies by how much the data should be shifted if shift is set to True, else has no effect
+    :param saved_model_dir: directory where the model which we will be inspecting is saved
+    :param whiten: specifies if the data on which we are calculating the gradients should be whitened
+    :param gradient_save_dir: directory to which the gradients will be saved
+    :return: the gradients in case we want to plot them right away
+    """
     amp_gradient_dict = {module_name: [] for module_name in select_modules}
     amp_gradient_dict_mch = {module_name: [] for module_name in select_modules}
     amp_gradient_dict_nch = {module_name: [] for module_name in select_modules}
 
+    # uncomment block below if interested in phase gradients also
+    """
     # phase_gradient_dict_mch = {module_name: [] for module_name in select_modules}
     # phase_gradient_dict_nch = {module_name: [] for module_name in select_modules}
     # phase_gradient_dict = {module_name: [] for module_name in select_modules}
+    """
 
     X_reshaped_list, X_reshaped_list_mch, X_reshaped_list_nch = [], [], []
     for patient_index in range(1, 13):
@@ -181,10 +211,12 @@ def get_gradients_for_intermediate_layers(select_modules, prefix, file, shift, h
             amp_gradient_dict_mch[module_name].append(amp_grads_mch)
             amp_gradient_dict_nch[module_name].append(amp_grads_nch)
 
+            # uncomment block below if interested in phase gradients also
+            """
             # phase_gradient_dict[module_name].append(phase_grads)
             # phase_gradient_dict_mch[module_name].append(phase_grads_mch)
             # phase_gradient_dict_nch[module_name].append(phase_grads_nch)
-
+            """
             if len(X_reshaped_list) < 4:
                 X_reshaped_list.append(X_reshaped[:, :, :module_filters])
 
@@ -196,6 +228,7 @@ def get_gradients_for_intermediate_layers(select_modules, prefix, file, shift, h
         shift_string = f'shift_{shift_by}'
     else:
         shift_string = ''
+
     for module_name in select_modules:
         amp_grads = np.concatenate(amp_gradient_dict[module_name], axis=1)
         amp_grads_mch = np.concatenate(amp_gradient_dict_mch[module_name], axis=1)
@@ -204,7 +237,7 @@ def get_gradients_for_intermediate_layers(select_modules, prefix, file, shift, h
         #                                                                                      exist_ok=True)
         Path(f'{output_dir}/{gradient_save_dir}/{file}/{shift_string}/{prefix}/amps/{module_name}/').mkdir(parents=True,
                                                                                             exist_ok=True)
-
+        # saving the gradients to the predefined directories
         print('saving gradients to:', f'{home}/outputs/{gradient_save_dir}/{file}/{shift_string}/{prefix}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_ALLCH')
         np.save(
             f'{home}/outputs/{gradient_save_dir}/{file}/{shift_string}/{prefix}/amps/{module_name}/amps_avg_{file}_{train_mode}_{eval_mode}_ALLCH',
@@ -217,6 +250,8 @@ def get_gradients_for_intermediate_layers(select_modules, prefix, file, shift, h
             amp_grads_nch)
 
         print('concatenated grads shape:', amp_grads.shape)
+        # uncomment block below if interested in phase gradients also
+        """
         # phase_grads = np.concatenate(phase_gradient_dict[module_name], axis=1)
         # phase_grads_mch = np.concatenate(phase_gradient_dict_mch[module_name], axis=1)
         # phase_grads_nch = np.concatenate(phase_gradient_dict_nch[module_name], axis=1)
@@ -230,16 +265,19 @@ def get_gradients_for_intermediate_layers(select_modules, prefix, file, shift, h
         # np.save(
         #     f'{home}/outputs/all_layer_gradients/{file}/shift_{shift_by}/{prefix}/phase/{module_name}/phase_avg_{file}_{train_mode}_{eval_mode}_NCH',
         #     phase_grads_nch)
-
+        """
         amp_grads_list.append(amp_grads)
         amp_grads_list_mch.append(amp_grads_mch)
         amp_grads_list_nch.append(amp_grads_nch)
         amp_grads_std.append(np.std(np.abs(amp_grads), axis=(0, 1)))
 
+        # uncomment block below if interested in phase gradients also
+        """
         # phase_grads_list.append(phase_grads)
         # phase_grads_std.append(np.std(np.abs(phase_grads), axis=(0, 1)))
         # phase_grads_list_mch.append(phase_grads_mch)
         # phase_grads_list_nch.append(phase_grads_nch)
+        """
     phase_grads_list, phase_grads_list_mch, phase_grads_list_nch, phase_grads_std = None, None, None, None
     return X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, amp_grads_std, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch, phase_grads_std
 
@@ -272,12 +310,15 @@ def get_gradients_for_intermediate_layers_from_np_arrays(file, prefix, modules, 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--variable', default='vel', type=str)
-parser.add_argument('--channels', default=None, type=str)
-parser.add_argument('--prefixes', default=['hp_m', 'sm'], type=str, nargs=2)
+parser.add_argument('--channels', default=None, type=str, help='')
+parser.add_argument('--prefixes', default=['hp_m', 'sm'], type=str, nargs=2, help='Type of setting in which the model was trained')
 parser.add_argument('--files', default=1, type=int)
 
 
 if __name__ == '__main__':
+    """
+    This script calculates and saves the gradients of layers specified in select_modules networks specified in files for
+    """
     select_modules = ['conv_spat', 'conv_2', 'conv_3', 'conv_4', 'conv_classifier']
     # select_modules = ['conv_4']
     args = parser.parse_args()
@@ -312,8 +353,11 @@ if __name__ == '__main__':
     prefixes = args.prefixes
     low_pass = [False, False, False, False]
 
-
+    # specifying for which scenarios we want to visualize the gradients
+    # train_modes = ['trained', 'untrained']
     trained_modes = ['trained']
+
+    # specifying for which dataset we want to visualize the gradients
     # eval_modes = ['train', 'validation']
     eval_modes = ['train']
 
@@ -321,11 +365,15 @@ if __name__ == '__main__':
     for file in files:
         for i, prefix in enumerate(prefixes):
             if 'h' in prefix:
-                high_pass = False
+                # specifying if gradients for networks trained on high-passed data should be
+                # visualized on high-passed data
+                high_pass = True
             else:
                 high_pass = False
 
             if 'sm' in prefix:
+                # specifying if gradients for networks trained on shifted data should be
+                # visualized on shifted data - no reason to make it False
                 shift = True
             else:
                 shift = False
@@ -337,12 +385,15 @@ if __name__ == '__main__':
                     X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, amp_grads_std, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch, phase_grads_std = get_gradients_for_intermediate_layers(select_modules, prefix, file=file, shift=shift, high_pass=high_pass, trajectory_index=trajectory_index, motor_channels=None, low_pass=low_pass[i], shift_by=None, saved_model_dir=saved_model_dir, whiten=whiten, gradient_save_dir=gradient_save_dir)
                     # X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch = get_gradients_for_intermediate_layers_from_np_arrays(file, prefix, modules=select_modules, train_mode=train_mode, eval_mode=eval_mode, shift_by=s)
                     print(prefix, file, train_mode, eval_mode)
-                    # plot_all_module_gradients(select_modules, X_reshaped_list,
-                    #                           [amp_grads_list, amp_grads_list_mch, amp_grads_list_nch],
-                    #                           output_file=output_amp, shift_by=s)
-                    #
+                    # uncomment block below if you wish to plot the gradients right away
+                    """
+                    plot_all_module_gradients(select_modules, X_reshaped_list,
+                                              [amp_grads_list, amp_grads_list_mch, amp_grads_list_nch],
+                                              output_file=output_amp, shift_by=s)
 
-                    # plot_all_module_gradients(select_modules, X_reshaped_list,
-                    #                           [phase_grads_list, phase_grads_list_mch, phase_grads_list_nch],
-                    #
-                    #                           output_file=output_phase)
+
+                    plot_all_module_gradients(select_modules, X_reshaped_list,
+                                              [phase_grads_list, phase_grads_list_mch, phase_grads_list_nch],
+
+                                              output_file=output_phase)
+                    """

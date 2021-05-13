@@ -6,6 +6,10 @@ from data.pre_processing import band_pass_data
 
 
 class DoubleModel(nn.Module):
+    """
+    Class meant to combine predictions on the full and high-passed dataset. Not ready and not a part
+    of the thesis.
+    """
     def __init__(self, model_1, model_2):
         super(DoubleModel, self).__init__()
         self.model_1 = model_1.float()

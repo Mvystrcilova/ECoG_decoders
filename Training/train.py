@@ -15,7 +15,7 @@ from Training.CorrelationMonitor1D import CorrelationMonitor1D
 from data.OnePredictionData import OnePredictionData
 from data.pre_processing import Data, get_num_of_channels
 from global_config import home, input_time_length, cuda, get_model_name_from_kernel_and_dilation
-from models.Model import load_model, change_network_stride, Model, add_padding
+from models.Model import load_model, change_network_kernel_and_dilation, Model, add_padding
 
 
 def get_writer(path='/logs/playing_experiment_1'):
@@ -33,6 +33,17 @@ def test_input(input_channels, model):
 
 
 def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=None, padding=False):
+    """
+    initializes a new Deep4Net and changes the kernel sizes and dilations of the network based on the input parameters
+    :param input_channels: 1 axis input shape
+    :param input_time_length: 0 axis input shape
+    :param dilations: dilations of the max-pool layers of the network
+    :param kernel_sizes: kernel sizes of the max-pool layers of the network
+    :param padding: if padding is to be added
+
+    :return: a Model object, the changed Deep4Net based on the kernel sizes and dilation parameters and the name
+    of the model based on the kernel sizes and dilatiosn
+    """
     if kernel_sizes is None:
         kernel_sizes = [3, 3, 3, 3]
     print('SBP False!!!')
@@ -42,29 +53,32 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
     if cuda:
         model.model = model.model.cuda()
 
-    conv_dilations = None
-
-    model_name = ''.join([str(x) for x in kernel_sizes])
-    if dilations is not None:
-        dilations_name = ''.join(str(x) for x in dilations)
-        model_name = f'{model_name}_dilations_{dilations_name}'
     model_name = get_model_name_from_kernel_and_dilation(kernel_sizes, dilations)
-    # if conv_dilations is not None:
-    #     conv_dilations_name = ''.join(str(x) for x in conv_dilations)
-    #     model_name = f'{model_name}_conv_d_{conv_dilations_name}'
 
-    changed_model = change_network_stride(model.model, kernel_sizes, dilations, remove_maxpool=False,
-                                          change_conv_layers=conv_dilations is not None, conv_dilations=conv_dilations)
-    #     changed_model = add_padding(changed_model, input_channels)
-    print('Model not changing!')
+    changed_model = change_network_kernel_and_dilation(model.model, kernel_sizes, dilations, remove_maxpool=False)
     print(changed_model)
 
-    # changed_model = model.model
     return model, changed_model, model_name
 
 
 def train(data, dilation, kernel_size, lr, patient_index, model_string, correlation_monitor, output_dir,
           max_train_epochs=300, split=None, cropped=True, padding=False):
+    """
+    Creates and fits a model with the specified parameters onto the specified data
+    :param data: dataset on which the model is to be trained
+    :param dilation: dilation parameters of the model max-pool layers
+    :param kernel_size: kernel sizes of the model's max-pool layers
+    :param lr: learning rate
+    :param patient_index: index of the patient on whose data the model is trained
+    :param model_string: string specifying the setting of the data
+    :param correlation_monitor: correlation monitor object calculating the correlations while fitting
+    :param output_dir: where the trained model should be saved
+    :param max_train_epochs: number of epochs for which to train the model
+    :param split: the fold from cross-validation for which we are currently trainig the model
+    :param cropped: if the decoding is cropped, alwasy True in thesis experiments
+    :param padding: if padding should be added, always False in thesis experiments
+    :return:
+    """
     model, changed_model, model_name = get_model(data.in_channels, input_time_length, dilations=dilation,
                                                  kernel_sizes=kernel_size, padding=padding)
     if cuda:
@@ -82,7 +96,9 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
         home + f'/models/saved_models/{output_dir}/').mkdir(
         parents=True,
         exist_ok=True)
-
+    # cutting the input into batches compatible with model
+    # if data.num_of_folds != -1, then also pre-whitening or filtering takes place
+    # as part of the cut_input method
     data.cut_input(input_time_length=input_time_length, n_preds_per_input=n_preds_per_input, shuffle=False)
 
     writer = get_writer(f'/logs/{output_dir}/cv_run_{1}')
@@ -100,6 +116,8 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
                 ('tensorboard', TensorBoard(writer, ))]
     # cropped=False
     print('cropped:', cropped)
+
+    # object EEGRegressor from the braindecode library suited for fitting models for regression tasks
     regressor = EEGRegressor(cropped=cropped, module=model.model, criterion=model.loss_function,
                              optimizer=model.optimizer,
                              max_epochs=max_train_epochs, verbose=1, train_split=data.cv_split,
@@ -109,14 +127,10 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
     torch.save(model.model,
                home + f'/models/saved_models/{output_dir}/initial_{model_string}_{model_name}_p_{patient_index}')
     regressor.max_correlation = -1000
+
     if padding:
         regressor.fit(data.train_set[0], data.train_set[1])
-    # X = data.train_set.X[0]
-    # ffted = np.fft.rfft(X[0, :, 0], n=X.shape[1])
-    # plt.xlabel('frequency [Hz]')
-    # plt.ylabel('|amplitude|')
-    # plt.plot(np.fft.rfftfreq(X.shape[1], 1/250.0), np.abs(ffted))
-    # plt.show()
+
     regressor.fit(np.stack(data.train_set.X), np.stack(data.train_set.y))
 
     # best_model = load_model(
@@ -135,6 +149,33 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
                shift, variable, result_df, max_train_epochs, high_pass=False, high_pass_valid=False,
                padding=False, cropped=True, low_pass_train=False, shift_by=None, saved_model_dir=f'lr_0.001',
                whiten=False, indices=None):
+    """
+    Performs num_of_folds cross-validation on each of the patients
+    :param model_string: specifies the setting in which the model was trained
+    :param patient_indices: specifies the indices for patients for which a model should be trained
+    :param dilation: dilation parameter of the max-pool layers in the network
+    :param kernel_size: the kernel sizes of the max-pool layers in the network
+    :param lr: learning rate
+    :param num_of_folds: number of cross-validation folds. If -1, then only one 80-20 split is performed.
+    :param trajectory_index: 0 for velocity, 1 for absolute velocity
+    :param low_pass: specifies if validation data should be low-passed
+    :param shift: specifies if predicted time-point should be shifted
+    :param variable: 'vel' for velocity, 'absVel' for absolute velocity
+    :param result_df: pandas.DataFrame where the results for the different patients are to be saved
+    :param max_train_epochs: number of epochs for which to train the network
+    :param high_pass: specifies if the train set and validation set should be high-passed
+    :param high_pass_valid: specifies if the validation set should be high-passed
+    :param padding: specifies if padding should be added to the network. Always False in this thesis.
+    :param cropped: specifies if the input should be cropped. Always True in this thesis.
+    :param low_pass_train: specifies if the training set should be low-passed
+    :param shift_by: specifies by how much to shift the predicted time-point with across the receptive field
+    :param saved_model_dir: specifies where the models should be saved
+    :param whiten: specifies if the dataset should be whitened
+    :param indices: specifies the indices for the different folds
+
+    :return: None, only saves the learning statistics
+    """
+
     best_valid_correlations = []
     # valid_indices = {}
     # train_indices = {}
@@ -180,6 +221,7 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
             device = 'cpu'
 
         if data.num_of_folds == -1:
+            # only one 80-20 train-valiation split
             best_corr = train(data, dilation, kernel_size, lr, patient_index, model_string, correlation_monitor,
                               max_train_epochs=max_train_epochs, output_dir=output_dir, split=None, cropped=cropped,
                               padding=padding)
@@ -196,6 +238,7 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
         else:
             fold_corrs = []
             for i in range(data.num_of_folds):
+                # data.num_of_folds cross-validation
                 best_corr = train(data, dilation, kernel_size, lr, patient_index, model_string,
                                   correlation_monitor, output_dir, split=i,
                                   max_train_epochs=max_train_epochs, cropped=cropped)

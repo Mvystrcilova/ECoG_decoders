@@ -13,7 +13,9 @@ import numpy as np
 
 from layer_passes import get_num_of_predictions
 
-
+"""
+Module not a part of the thesis
+"""
 def create_multi_graph(amp_grads, amp_grads_sems, batch_X, ax, title):
     y = np.mean(np.abs(amp_grads[0]), axis=(0, 1))
     mch = np.mean(np.abs(amp_grads[1]), axis=(0, 1))
@@ -29,6 +31,11 @@ def create_multi_graph(amp_grads, amp_grads_sems, batch_X, ax, title):
 
 
 def get_kernel_and_dilation_from_long_name(file):
+    """
+    Gets kernel size and dilation from  previously used model name to a shorter standard version
+    :param file: file where the model is saved
+    :return: kernel size and dilation of the model based on its name
+    """
     kernels, dilations = None, None
     if ('3333' in file) or ('k3' in file):
         kernels = [3, 3, 3, 3]
@@ -182,6 +189,9 @@ parser.add_argument('--variable', default=0, type=int)
 parser.add_argument('--channels', default=None, type=str)
 
 if __name__ == '__main__':
+    """
+    Script plotting motor, non-motor and all channel gradients of one network into one plot.
+    """
     args = parser.parse_args()
     if args.channels is not None:
         if args.channels == 'MCH':

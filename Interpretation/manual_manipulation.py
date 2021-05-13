@@ -4,13 +4,10 @@ import numpy as np
 from braindecode.models.util import get_output_shape
 from braindecode.util import np_to_var, var_to_np
 from matplotlib import pyplot as plt  # equiv. to: import matplotlib.pyplot as plt
-import scipy.io as sio
 from tqdm.autonotebook import tqdm
 from cycler import cycler
-from Interpretation.interpretation import get_corr_coef, reshape_Xs, calculate_phase_and_amps, plot_correlation, \
-    plot_gradients
+from Interpretation.interpretation import get_corr_coef, reshape_Xs, calculate_phase_and_amps
 from models.Model import load_model, create_new_model
-import sys
 import matplotlib
 import seaborn
 from global_config import home, input_time_length, output_dir, random_seed, cuda
@@ -30,7 +27,7 @@ matplotlib.rcParams['font.size'] = 14
 seaborn.set_style('darkgrid')
 
 
-def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef, output_file):
+def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, corrcoef, output_file):
     print('Plotting individual gradients')
     plt.figure(figsize=(18, 5))
     plt.plot(np.fft.rfftfreq(batch_X.shape[2], 1 / 250.0), np.mean(amp_grads_per_crop, axis=(1)).T, lw=0.25,
@@ -61,7 +58,7 @@ def plot_individual_gradients(batch_X, amp_grads_per_crop, setname, coef, output
     plt.show()
 
 
-def plot_colored_amps_per_crops(corrcoef, setname, amp_grads_per_crop):
+def plot_colored_amps_per_crops(corrcoef, setname, amp_grads_per_crop, batch_X):
     with plt.rc_context(rc={'axes.prop_cycle': cycler(
             color=cm.coolwarm(np.linspace(0, 1, len(amp_grads_per_crop))))}):
         plt.figure(figsize=(18, 5))
@@ -77,11 +74,11 @@ def plot_colored_amps_per_crops(corrcoef, setname, amp_grads_per_crop):
     plt.title("{:s} Amplitude Gradients (Corr {:.2f}%)".format(setname, corrcoef * 100))
 
 
-def look_at_interesting_crops(interesting_crops, ):
-    pass
-
-
 def manually_manipulate_signal(X_reshaped, output, model, maxpool_model=False, white_noise=True):
+    """
+    Adds a certain frequencies or white noise to the signal in X_reshaped
+    Plots how the output of the network changes with this added frequency.
+    """
     if white_noise:
         freqs = ['white_noise']
     else:
@@ -167,34 +164,28 @@ def manually_manipulate_signal(X_reshaped, output, model, maxpool_model=False, w
         plt.show()
 
 
-def get_amp_grads_per_crops(outs, X_reshaped):
-    amp_grads_per_crop = []
-    for i_time in tqdm(range(outs.shape[2])):
-        batch_X = X_reshaped[:1]
-        iffted, amps_th, phases_th = calculate_phase_and_amps(batch_X)
-        outs = new_model(iffted.double())
-        assert outs.shape[1] == 1
-        mean_out = torch.mean(outs[:, :, i_time, ])
-        mean_out.backward(retain_graph=True)
-        amp_grads = var_to_np(amps_th.grad).squeeze(-1)
-        amp_grads_per_crop.append(amp_grads)
-    amp_grads_per_crop = np.array(amp_grads_per_crop)
-    print(amp_grads_per_crop.shape)
-    amp_grads_per_crop = amp_grads_per_crop.squeeze()
-    print(amp_grads_per_crop.shape)
-
-    return amp_grads_per_crop
-
-variable = 'absVel'
-model_prefix = 'm'
-
-trained_modes = ['trained', 'untrained']
-eval_modes = ['train', 'validation']
-cropped = False
-
-
 def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, saved_model_dir, model_file=None, shift=False, high_pass=False, trajectory_index=0,
                           multi_layer=False, motor_channels=None, low_pass=False, shift_by=None, whiten=False):
+    """
+    Puts together the variables necessary for gradient visualization.
+    First the model is loaded based on its name. Then the data is prepared to be given to the loaded model on input.
+    The model is set into eval mode (its weights are frozen) and it is ready for gradient calculation
+
+    :param patient_index: specifies on which patient data the model was build
+    :param model_name: name of the model to be loaded
+    :param trained_mode: specifies if the model should be trained or untrained
+    :param eval_mode: specifies if the set should be the train set or the validation set
+    :param saved_model_dir: the directory where the model is saved
+    :param model_file:
+    :param shift: specifies if the data in the dataset should be shifted
+    :param high_pass: specifies if the data in the datasets should be high-pass filtered
+    :param trajectory_index: 0 for velocity, 1 for absolute velocity
+    :param multi_layer: specifies if only the last layer should be returned or all layers will be inspected
+    :param motor_channels: specifies if only gradients for motor channels should be returned
+    :param low_pass: specifies if the data in the datasets should be low-pass filtered
+    :param shift_by: specifies by how much the predicted time-point should be shifted with respect to he receptive field.
+    :param whiten: specifies if data should be whitened
+    """
     if shift_by is not None:
         shift_str = f'shift_{shift_by}'
         model_name_list = model_name.split('/')
@@ -263,46 +254,6 @@ def prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode, sa
 
     return corrcoef, new_model, X_reshaped, small_window, output, data.motor_channels, data.non_motor_channels
 
-model_names = []
-if __name__ == '__main__':
-    if cropped:
-        model_string = 'cropped_model'
-    else:
-        model_string = 'model'
-    # model_name = f'{model_string}_strides_3333'
-    for model_name in model_names:
-        for patient_index in range(8, 9):
-            model_name = f'{model_name}'
-            for trained_mode in trained_modes:
-                for eval_mode in eval_modes:
-                    corrcoef, new_model, X_reshaped, small_window, output = prepare_for_gradients(patient_index, model_name, trained_mode, eval_mode)
-
-                    print('Full window size')
-
-                    batch_X = X_reshaped[:1]
-                    plot_correlation(batch_X, new_model, corrcoef, output_file=output)
-
-                    print('Smaller window size')
-
-                    batch_X = X_reshaped[:1, :, :small_window]
-                    plot_correlation(batch_X, new_model, corrcoef, output, None, setname='Smaller window')
-
-                    print('Last window only')
-                    batch_X = X_reshaped[:1]
-                    plot_correlation(batch_X, new_model, corrcoef, output, 'last_window', 'Last window')
-
-                    print('Random window')
-                    plot_correlation(batch_X, new_model, corrcoef, output, 'random_window', 'Random window')
-
-                    print('Absolute full window')
-                    outs = plot_correlation(batch_X, new_model, corrcoef, output, 'absolute_full_window', 'Absolute Full Window')
-
-                    amp_grads_per_crop = get_amp_grads_per_crops(outs, X_reshaped)
-                    plot_gradients(batch_X, np.mean(amp_grads_per_crop, axis=(0, 1)), corrcoef=corrcoef,
-                                   title_prefix='Train', wsize='Full windows crops', output_file=output)
-                    plot_individual_gradients(batch_X, amp_grads_per_crop, 'Train', corrcoef, output)
-                    manually_manipulate_signal(X_reshaped, output, new_model, white_noise=True, maxpool_model=False)
-                    manually_manipulate_signal(X_reshaped, output, new_model, white_noise=False, maxpool_model=False)
 
 
 

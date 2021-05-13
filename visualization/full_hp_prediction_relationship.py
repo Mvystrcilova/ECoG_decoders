@@ -28,6 +28,8 @@ activations = {}
 parser = argparse.ArgumentParser()
 parser.add_argument('--variable', default=1, type=int)
 
+""" This script is not part of the thesis"""
+
 if __name__ == '__main__':
     args = parser.parse_args()
     dilation = [None]

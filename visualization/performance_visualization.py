@@ -6,6 +6,9 @@ import pandas
 
 
 def load_results_file(file_path):
+    """
+    Function reading deprecated result saving formats
+    """
     file = open(file_path, 'r')
     lines = file.readlines()
     results = {}
@@ -22,6 +25,13 @@ def load_results_file(file_path):
 
 
 def plot_df_boxplot(df, title, saving_path=None):
+    """
+    Shows and potentialy saves a boxplot from a pandas.DataFrame
+    :param df: pandas.DataFrame with values to be plotted
+    :param title: graph title
+    :param saving_path: path where to save the graph
+    :return: None
+    """
     fig, ax = plt.subplots(figsize=(12, 7))
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -39,6 +49,9 @@ if __name__ == '__main__':
     # absVel_results = load_results_file(home + '/outputs/absVel_avg_best_results.txt')
     # plot_df_boxplot(vel_results, home + '/results/vel_performance_graph.png')
     # plot_df_boxplot(absVel_results, home + '/results/abs_vel_performance_graph.png')
+    """
+    Code to visualize preliminary results
+    """
     df = pandas.read_csv(f'{home}/results/hp_performance.csv', sep=';', index_col=0)
     plot_df_boxplot(df, 'high-pass performance')
     df2 = pandas.read_csv(f'{home}/results/hp_shifted2_performance.csv', sep=';', index_col=0)

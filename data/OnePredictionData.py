@@ -25,6 +25,7 @@ def cut_Xy(Xs, ys, input_time_length):
 
 
 class OnePredictionData:
+    """ Not finished class for building a network with an uniform receptive field"""
     def __init__(self, mat_file, input_time_length, num_of_folds, low_pass, high_pass, valid_high_pass, trajectory_index):
         self.Xs, self.ys = None, None
         self.lp_Xs, self.lp_ys, self.hp_ys, self.hp_Xs = None, None, None, None

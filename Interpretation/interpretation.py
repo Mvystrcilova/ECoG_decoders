@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from braindecode.util import np_to_var, var_to_np
 import torch
-from global_config import home, output_dir, interpreted_model_name, eval_mode, trained_mode, cuda
+from global_config import cuda
 
 
 def get_corr_coef(dataset, model):
@@ -38,6 +38,11 @@ def get_corr_coef(dataset, model):
 
 
 def reshape_Xs(wSize, X_reshaped):
+    """
+    :param wSize: size of the input window
+    :param X_reshaped: batch of cropped intputs which is reshaped
+    :return: reshaped version of X_reshaped
+    """
     nWindows = int(X_reshaped.shape[2] / wSize)
     # will move windows into batch axis
     # so first ensure they are exactly divisible, by cutting out rest
@@ -53,6 +58,11 @@ def reshape_Xs(wSize, X_reshaped):
 
 
 def calculate_phase_and_amps(batch_X):
+    """
+    Hooks the amplitude and phase of the signal in batch_X
+    :param batch_X: one training batch
+    :return: returns the original signal with hooked amplitudes and phases
+    """
     ffted = np.fft.rfft(batch_X, axis=2)
     amps = np.abs(ffted)
     phases = np.angle(ffted)
@@ -78,6 +88,7 @@ def get_outs_shape(outs_shape, outs):
 
 
 def get_outs(batch_X, new_model, outs_shape=None, grad_type='amps'):
+    """gets output of the network when signal with amplitudes and frequencies is given on input"""
     iffted, amps_th, phases_th = calculate_phase_and_amps(batch_X)
     if cuda:
         outs = new_model(iffted.double().cuda())
@@ -96,25 +107,3 @@ def get_outs(batch_X, new_model, outs_shape=None, grad_type='amps'):
         return amp_grads, outs
     else:
         return phase_grads, outs
-
-
-def plot_correlation(batch_X, new_model, coef, output_file, outs_shape=None, setname=''):
-    amp_grads, outs = get_outs(batch_X, new_model, outs_shape)
-    plot_gradients(batch_X, np.mean(amp_grads, axis=(0, 1)), corrcoef=coef, wsize=setname, output_file=output_file)
-    plot_gradients(batch_X, np.mean(np.abs(amp_grads), axis=(0, 1)), coef, title_prefix='Absolute_', wsize=setname,
-                   output_file=output_file)
-    return outs
-
-
-def plot_gradients(batch_X, y, corrcoef, output_file, title_prefix = '', setname='', wsize=''):
-    fig = plt.figure(figsize=(12, 4))
-    plt.plot(np.fft.rfftfreq(batch_X.shape[2], 1 / 250.0), y)
-    plt.axhline(y=0, color='black')
-    plt.xlabel('Frequency [Hz]')
-    plt.ylabel('Gradient')
-    plt.title("{:s} {:s}Amplitude Gradients (Corr {:.2f}, {})".format(title_prefix, setname, corrcoef * 100, wsize))
-    plt.tight_layout()
-    plt.savefig(f'{output_file}/{title_prefix} Amplitude_Gradients_corr{setname}_{wsize}.png')
-    plt.show()
-
-    plt.close(fig)

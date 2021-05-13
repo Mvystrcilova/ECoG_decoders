@@ -1,8 +1,14 @@
 from global_config import home
 import pandas
 
+"""
+Parsers able to read the outputs of slurm files when the network is trained
+on a Data object with parameter num_of_folds = -1. 
+"""
+
 
 def read_model_performances(lines):
+    """Parses output of slurm files for regular training"""
     performances = {}
     patients = [str(x) for x in range(13)]
     current_model = ''
@@ -19,6 +25,7 @@ def read_model_performances(lines):
 
 
 def read_model_shiftby_performances(lines):
+    """Parses outputs of slurm files with gradual shifting training."""
     performances = {}
     patients = [str(x) for x in range(13)]
     # current_model = ''

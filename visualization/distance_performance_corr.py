@@ -10,6 +10,8 @@ from visualization.fold_result_visualization import get_5_fold_performance_df
 
 
 def get_kernels_from_name(name):
+    """based on the name of the model returns its max-pool layer's kernel sizes
+    and dilations """
     kernels, dilations = None, None
 
     if 'k3' in name:
@@ -32,6 +34,12 @@ def get_kernels_from_name(name):
 
 
 def get_distance_to_performance(df, variable):
+    """
+    plots the
+    :param df: pandas.DataFrame where the columns are performances of models on the different patients
+    :param variable: 'vel' if we are plotting velocity, else 'absVel' for absolute velocity
+    :return: dictionary where the performances are ordered based on the size of the receptive field of the networks
+    """
     distance_performance_dict = {}
     for column in df.columns:
         if 'k4_d2' not in column:
@@ -60,6 +68,7 @@ def get_nums_from_dicts(distance_performance_dict):
 
 
 def plot_distance_peformance(distance_performance_dicts, labels, title, output_file=None):
+    """ plots the dependence of the performance on the size of the receptive field"""
     colors = ['steelblue', 'orange', 'limegreen', 'hotpink', 'turquoise', 'gold', 'hotpink']
     sem_colors = ['lightsteelblue', 'navajowhite', 'mistyrose', 'honeydew', 'lemonchiffon', 'azure', 'lavenderblush']
     models = ['k1', 'k2_d1', 'k3_d1', 'k4_d1', 'k2_d2', 'k3_d2', 'k2_d3', 'k3_d3', 'k3_d3_sbp1', 'k4_d3']

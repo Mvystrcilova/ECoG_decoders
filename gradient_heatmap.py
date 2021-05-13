@@ -73,7 +73,7 @@ def plot_gradient_heatmap(gradient_df, title, output, xlabel, ax):
     minimum = min(min(gradient_df[0].min()), min(gradient_df[1].min()), min(gradient_df[2].min()))
     maximum = max(max(gradient_df[0].max()), max(gradient_df[1].max()), max(gradient_df[2].max()))
     for i, a in enumerate(ax):
-        coef = 0.5
+        coef = 0.2
         sns.heatmap(gradient_df[i].iloc[::-1], cmap='coolwarm', center=0, cbar_kws={'label': 'Gradients'},
                     ax=a, vmin=minimum+minimum*-1*coef, vmax=maximum-maximum*coef)
         if i == 0:
@@ -113,6 +113,7 @@ def get_gradient_title(layer, gradient_kind):
     # return f' {gradient_string} - {gradient_title_dict[layer]}'
     return f' {gradient_string} - {layer}'
 
+
 def get_gradient_for_file(file, layer, gradient_kind, variable, prefix, gradient_dir):
     gradient = np.load(
         f'{home}/outputs/{gradient_dir}/{file}/{prefix}/amps/{layer}/amps_avg_{file}_trained_train_{gradient_kind}.npy')
@@ -121,6 +122,13 @@ def get_gradient_for_file(file, layer, gradient_kind, variable, prefix, gradient
 
 
 def create_shift_gradient_heatmap(prefix, variable):
+    """
+    Plotting gradients of the Deep4Net sbp0 architecture during the gradual shifting
+
+    :param prefix: the setting specified by
+    :param variable: 'vel' for velocity, 'absVel' for absolute velocity gradients
+    :return: None
+    """
     shifts = [x for x in range(-250, 251, 25)] + [261]
     # shifts = [-250]
     shifts.remove(261)
@@ -145,7 +153,7 @@ def create_shift_gradient_heatmap(prefix, variable):
             titles.append(title)
 
         plot_gradient_heatmap(gradient_dfs, titles, output,
-                                  xlabel='Shift with respect to receptive field centre (in milliseconds)',
+                                  xlabel='Shift with respect to receptive \nfield centre (in milliseconds)',
                                   ax=ax)
         plt.tight_layout()
         plt.savefig(output)
@@ -314,7 +322,10 @@ def plot_one_file_results(file, variable):
 
 
 if __name__ == '__main__':
-    variable = 'absVel'
+    """
+    Plots the gradient heatmaps of gradient saved via the gradient_inspection.py script.
+    """
+    variable = 'vel'
     files = [f'{variable}_k1_d3', f'{variable}_k2_d3', f'{variable}_k3_d3',
              f'{variable}_k2_d1', f'{variable}_k3_d1',
              f'{variable}_k2_d2', f'{variable}_k3_d2'
@@ -323,13 +334,17 @@ if __name__ == '__main__':
     prefixes = ['m', 'sm', 'hp_m', 'hp_sm']
     prefixes2 = ['sm']
 
-
+    # plotting gradients of all architectures on the different datasets
     for prefix in prefixes:
-        model_gradients_heatmap(files, ['conv_spat', 'conv_2', 'conv_3', 'conv_4', 'conv_classifier'], variable, prefix,
-                                'all_layer_gradients2')
+    #     model_gradients_heatmap(files, ['conv_spat', 'conv_2', 'conv_3', 'conv_4', 'conv_classifier'], variable, prefix,
+    #                             'all_layer_gradients2')
         model_gradients_heatmap(files, ['conv_spat', 'conv_2', 'conv_3', 'conv_4', 'conv_classifier'], variable, prefix,
                             'all_layer_grads_pw', saved_models_dir='pre_whitened')
+
+    # plotting gradient changes during the gradual shift of the predicted time-point
     # for p in prefix:
     #     create_shift_gradient_heatmap(p, variable)
+
+    # plotting all experiments for only one architecture
     # for variable in ['vel', 'absVel']:
     #     plot_one_file_results(f'{variable}_k3_d3', variable)

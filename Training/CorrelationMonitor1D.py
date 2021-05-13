@@ -115,8 +115,6 @@ class CorrelationMonitor1D(Callback):
             else:
                 net.history.record('validation_correlation_best', False)
 
-            # print(f'train correlation: {train_corr}')
-            # print(f'validation correlation: {valid_corr}')
         self.step_number += 1
 
     # def on_batch_end(self, net, **kwargs):
@@ -149,7 +147,5 @@ class CorrelationMonitor1D(Callback):
         else:
             targets_per_trial = [t.detach().numpy()[0] for t in targets_per_trial]
         target_timeseries = np.concatenate(targets_per_trial, axis=0)
-        # doing absolute velocity prediction from absolute velocity
-        # if not absolute velocity, remove np.abs
         corr = np.corrcoef(target_timeseries, pred_timeseries)[0, 1]
         return corr

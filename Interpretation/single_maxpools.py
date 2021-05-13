@@ -12,6 +12,8 @@ from data.pre_processing import Data
 from global_config import input_time_length, home
 import numpy as np
 
+"""Script which implements passing the signal through single max-pool layers."""
+
 
 class MaxPoolModel(torch.nn.Module):
     def __init__(self, num_of_layers, kernel_sizes, strides, dilations):

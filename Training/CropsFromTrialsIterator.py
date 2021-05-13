@@ -2,8 +2,7 @@ import numpy as np
 from numpy.random.mtrand import RandomState
 
 
-### imported from the Braindecode 0.4.85 library
-
+# imported from the Braindecode 0.4.85 library
 
 class CropsFromTrialsIterator(object):
     """

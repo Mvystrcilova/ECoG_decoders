@@ -276,6 +276,12 @@ parser.add_argument('--channels', default=None, type=str)
 parser.add_argument('--shifts', default=None, type=int, nargs=4)
 
 if __name__ == '__main__':
+    """
+    Same functionalities as gradient_inspection.py but suited for calculating of gradients of gradually 
+    networks trained while gradually shifting the predicted time-point.
+    """
+
+    # configuration
     select_modules = ['conv_spat', 'conv_2', 'conv_3', 'conv_4', 'conv_classifier']
     args = parser.parse_args()
     print(cuda)
@@ -289,7 +295,7 @@ if __name__ == '__main__':
              f'{variable}_k1_d3', ]
     files2 = [f'{variable}_k2_d2', f'{variable}_k3_d1',
               ]
-    files3 =[f'{variable}_k3_d3']
+    files3 = [f'{variable}_k3_d3']
     whiten = False
     saved_model_dir = 'lr_0.001'
     shift_string = ''
@@ -300,11 +306,6 @@ if __name__ == '__main__':
 
     prefixes = ['sbp0_m']
 
-    # shifts6 = [-250, -225, -200, -175, -150, -125]
-    # shifts = [-100, -75, -50]
-    # shifts2 = [-25, 0, 25, 50, 75]
-    # shifts3 = [100, 125, 150]
-    # shifts4 = [175, 200, 225, 250]
     shifts = args.shifts
     if shifts == [150, 175, 200, 225]:
         shifts += [250]
@@ -339,7 +340,8 @@ if __name__ == '__main__':
                     for eval_mode in eval_modes:
                         Path(f'{output_dir}/{gradient_save_dir}/{file}/shift_{s}/{prefix}').mkdir(parents=True, exist_ok=True)
                         X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, amp_grads_std, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch, phase_grads_std = get_gradients_for_intermediate_layers(select_modules, prefix, file=file, shift=shift[i], high_pass=high_pass[i], trajectory_index=trajectory_index, motor_channels=motor_channels, low_pass=low_pass[i], shift_by=s, saved_model_dir=saved_model_dir, whiten=whiten, gradient_save_dir=gradient_save_dir)
-                        # X_reshaped_list, amp_grads_list, amp_grads_list_mch, amp_grads_list_nch, phase_grads_list, phase_grads_list_mch, phase_grads_list_nch = get_gradients_for_intermediate_layers_from_np_arrays(file, prefix, modules=select_modules, train_mode=train_mode, eval_mode=eval_mode, shift_by=s)
                         print(prefix, file, train_mode, eval_mode)
                         print('shift:', s)
+
+                        # uncomment line below if interested in plotting gradients right away
                         # plot_all_module_gradients(select_modules, X_reshaped_list,

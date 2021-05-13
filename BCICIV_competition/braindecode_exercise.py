@@ -16,6 +16,9 @@ from braindecode.models import ShallowFBCSPNet
 from braindecode.models.util import to_dense_prediction_model, get_output_shape
 from braindecode.util import set_random_seeds, create_mne_dummy_raw
 
+"""
+Playing around with the BCI IV competition dataset, and familiarizing with the Braindecode library."""
+
 
 def create_compatible_dataset(mat_file):
     train_data, labels = read_mat_file(mat_file)
