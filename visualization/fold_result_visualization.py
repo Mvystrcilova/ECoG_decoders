@@ -79,7 +79,7 @@ def get_5_fold_performance_df(variable, prefixes=None):
     (i.e. kernel sizes 1, 2, 3 and dilations powers of 1, 2 and 3)
     :param variable: The variable for which comparison is done ('vel' for velocity or 'absVel' for absolute velocity)
     :param prefixes: The prefixes specifying the setting which we want to compare.
-    The prefixes for the different settings are described in Documentation.md
+    The prefixes for the different settings are described in README.md
     :return: A DataFrame with all results for the specified prefixes for all architectural modifications
     """
     big_df = pandas.DataFrame()

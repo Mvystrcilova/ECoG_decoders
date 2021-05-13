@@ -28,7 +28,7 @@ parser.add_argument('--variable', default=0, type=int)
 """ 
 This script allows to specify the configurations of the networks and datasets that 
 are being trained. Even though it is called shifted_training.py it can be used to train any 
-network on any dataset based on the parameters. The parameters are explained in Documentation.md
+network on any dataset based on the parameters. The parameters are explained in README.md
 """
 
 if __name__ == '__main__':

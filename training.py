@@ -27,7 +27,7 @@ parser.add_argument('--variable', default=0, type=int)
 if __name__ == '__main__':
     """
     This script allows to specify the configurations of the networks and datasets that 
-    are being trained. The parameters are explained in Documentation.md
+    are being trained. The parameters are explained in README.md
     """
     args = parser.parse_args()
     input_time_length = 1200

@@ -28,9 +28,10 @@ parser.add_argument('--variable', default=0, type=int)
 if __name__ == '__main__':
     """ This script allows to specify the configurations of the networks and datasets that 
     are being trained. Even though it is called high_pass_training.py it can be used to train any 
-    network on any dataset based on the parameters. The parameters are explained in Documentation.md
+    network on any dataset based on the parameters. The parameters are explained in README.md
     """
     # configurations
+
     args = parser.parse_args()
     input_time_length = 1200
     max_train_epochs = 100
