@@ -127,8 +127,8 @@ def change_network_kernel_and_dilation(model, kernel_sizes=None, dilations=None,
                 new_model.add_module(f'pool_{i}', nn.MaxPool2d(kernel_size=(kernel_sizes[i], 1), stride=(strides[i], 1),
                                                                padding=child.padding, dilation=(dilations[i], 1),
                                                                ceil_mode=child.ceil_mode))
-            print('previous', name, child.stride, child.kernel_size)
-            print('now', name, strides[i], kernel_sizes[i])
+            # print('previous', name, child.stride, child.kernel_size)
+            # print('now', name, strides[i], kernel_sizes[i])
             i += 1
         if add:
             new_model.add_module(name, child)

@@ -33,7 +33,7 @@ if __name__ == '__main__':
     """
     args = parser.parse_args()
     input_time_length = 1200
-    max_train_epochs = 100
+    max_train_epochs = 1
     batch_size = 16
     print(cuda, home)
     set_random_seeds(seed=random_seed, cuda=cuda)

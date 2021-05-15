@@ -38,7 +38,7 @@ cd ECoG_decoders
 python3 -m pip3 install --user virtualenv
 python3 -m venv env
 source env/bin/activate
-pip3 -r install requirements.txt
+pip3 install -r requirements.txt
 python3 training.py --dummy_dataset=True
 ```
 

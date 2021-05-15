@@ -50,7 +50,7 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
     model_name = get_model_name_from_kernel_and_dilation(kernel_sizes, dilations)
 
     changed_model = change_network_kernel_and_dilation(model.model, kernel_sizes, dilations, remove_maxpool=False)
-    print(changed_model)
+    # print(changed_model)
 
     return model, changed_model, model_name
 
