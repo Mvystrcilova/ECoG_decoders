@@ -5,37 +5,39 @@ called "Prediction of velocity and speed of movement from human intracranial EEG
 by Michaela Vystrčilová.
 
 The project contains code which was used to perform experiments and analyses described in the thesis. 
-The dataset used to perform experiments and analysis described is not publicly available. 
+The dataset used to perform the experiments and analysis is not publicly available. 
 Therefore, it is not part of this project.
-While it is not possible to run the scripts in this project without it, how it works 
-can be presented in person.
 
 ## Runnable scripts
 
 The project has multiple runnable Python scripts located in its root.
 They can be run directly or using bash scripts located 
-in the `bash_scripts` folder. The bash scripts are designed 
-for the `slurm` environment which is present in the `gpulab` at MFF UK.
-The following commands can be used to run a bash script:
+in the `bash_scripts` folder.
+Without the dataset, only scripts with a *dummy* parameter
+can be executed.
+The bash scripts are designed for the `slurm` environment which is present in the `gpulab` at MFF UK.
+The following bash script implements the dummy dataset and can be run in the `slurm` environment 
+using the following commands:
 
 ```
 git clone git@github.com:Mvystrcilova/ECoG_decoders.git # clone the repository
 
 cd ECoG_decoders
-sbatch bash_scripts/{insert bash script here}
+sbatch bash_scripts/run_in_ch0_k3_dummy.sh
 ```
 
-The Python scripts can be also run directly in the following way:
-As stated before, the dataset is publicly unavailable and without the data
-the scripts do not run. 
-Therefore, we created parameter which creates a dummy dataset when set to `True`
-It always creates the dataset with each run, therefore, the dataset does not need to be downloaded.
+The Python scripts can be also run directly.
+Again only scripts with the `dummy_dataset` set to `True` can be executed without the dataset.
+
 
 ```
 git clone git@github.com:Mvystrcilova/ECoG_decoders.git # clone the repository
 
 cd ECoG_decoders
 
+python3 -m pip3 install --user virtualenv
+python3 -m venv env
+source env/bin/activate
 pip3 -r install requirements.txt
 python3 training.py --dummy_dataset=True
 ```
@@ -52,11 +54,7 @@ While only one script would be sufficient, we created three because
 when running them in the `gpulab`, at any time, the process can be 
 canceled and then restarted from the beginning. 
 And if we change the parameters in the script between the first start of the process and the restart,
-the process is restarted with the changed parameters. 
-We could of course create more argparse arguments and set less of them in the script,
-but we would then need to create more different bash scripts with different combinations of the parameters.
-Therefore, we decided to create multiple Python scripts and multiple bash scripts 
-to run multiple experiments with different parameters.
+the process is restarted with the changed parameters.
 
 
 #### Configuration parameters
@@ -154,6 +152,7 @@ The `gradient_inspection.py` script can be run using multiple bash scripts with 
 #### Gradient visualization
 
 After calculating the gradients we also have a runnable script - `gradient_heatmap.py` - to visualize them. 
+The gradient heatmap script can be executed direcly or through `pw_gradient_heatmaps.sh`.
 
 ## Project description
 
@@ -184,7 +183,7 @@ and also perform other network analysis tasks.
 Most notably the `manual_manipulation.py` contains methods which are used in the `gradient_inspection.py` script
 for calculating and visualizing gradients.
 
-The `perturbation.py` module contains code provided by Mr. Jiří Hammer, Ph.D.
+The `perturbation.py` module contains code provided by Mgr. Jiří Hammer, Ph.D.
 from his perturbation analysis and was not used for the analyses in the thesis.
 
 The `single_maxpools.py` module was used to pass the signal through single max-pool layers.

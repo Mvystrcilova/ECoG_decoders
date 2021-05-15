@@ -6,7 +6,9 @@ logs
 *.png
 .idea
 previous_work
-models/*
+models/double_models/*
+models/maxpool_models/*
+models/saved_models/*
 *.pt
 *.json
 *.txt
@@ -18,3 +20,6 @@ outputs/shifted_graphs
 outputs/all_layer_gradients
 outputs/all_layer_grads
 double_traning.py
+*.pdf
+*.out
+*.ipynb
