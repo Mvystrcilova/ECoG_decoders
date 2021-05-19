@@ -39,6 +39,7 @@ python3 -m pip3 install --user virtualenv
 python3 -m venv env
 source env/bin/activate
 pip3 install -r requirements.txt
+
 python3 training.py --dummy_dataset=True
 ```
 
@@ -47,11 +48,10 @@ The models trained and validated on the full dataset are available [here](https:
 ### Training scripts
 
 There are four training scripts, namely `training.py`, 
-`shifted_training.py`, `high_pass_training.py` and `pre_whitened_trainig`.
+`shifted_training.py`, `high_pass_training.py` and `pre_whitened_training`.
 All four of these scripts have the same functionalities. 
 Except the `training.py` script which also has the option of using the *dummy_dataset*.
-While only one script would be sufficient, we created three because
-when running them in the `gpulab`, at any time, the process can be 
+We created three because when running them in the `gpulab`, at any time, the process can be 
 canceled and then restarted from the beginning. 
 And if we change the parameters in the script between the first start of the process and the restart,
 the process is restarted with the changed parameters.
@@ -99,9 +99,9 @@ The bash scripts which can be used to run the above mentioned training scripts a
 
 #### Training settings
 
-A table displaying values of `model_string` together with the setting they describe
+A table displaying values of `model_string` together with the setting they describe:
 
-| param: **`model_string`** | param: `shift` | param: `high_pass` |param: `high_pass_valid` | param: `low_pass` | param: `low_pass_training` | setting description |
+| param: `model_string` | param: `shift` | param: `high_pass` |param: `high_pass_valid` | param: `low_pass` | param: `low_pass_training` | setting description |
 | -------------- | ------- | ----------- | ----------------- | ---------- | ------------------- | ---------- |
 | *m_* | `False` | `False` | `False` | `False` | `False` | original setting (full training and validation, non-shifted) as presented in Hammer et al. |
 | *sm_* | `True` | `False` | `False` | `False` | `False` | shifted setting, full training and validation | 

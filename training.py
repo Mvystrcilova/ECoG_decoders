@@ -66,10 +66,10 @@ if __name__ == '__main__':
         dummy_string = ''
 
     if trajectory_index == 0:
-        model_string = f'{dummy_string}b_{vel_string}'
+        model_string = f'{dummy_string}m_{vel_string}'
         variable = vel_string
     else:
-        model_string = f'{dummy_string}b_{absVel_string}'
+        model_string = f'{dummy_string}m_{absVel_string}'
         variable = absVel_string
 
     best_valid_correlations = []
