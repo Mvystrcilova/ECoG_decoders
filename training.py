@@ -47,8 +47,8 @@ if __name__ == '__main__':
     learning_rate = 0.001
     low_pass = False
     shift = False
-    high_pass = False
-    high_pass_valid = False
+    high_pass = True
+    high_pass_valid = True
     add_padding = False
     low_pass_training = False
     whiten = False
@@ -66,10 +66,10 @@ if __name__ == '__main__':
         dummy_string = ''
 
     if trajectory_index == 0:
-        model_string = f'{dummy_string}m_{vel_string}'
+        model_string = f'{dummy_string}hp_for_hp_m_{vel_string}'
         variable = vel_string
     else:
-        model_string = f'{dummy_string}m_{absVel_string}'
+        model_string = f'{dummy_string}hp_for_hp_m_{absVel_string}'
         variable = absVel_string
 
     best_valid_correlations = []
@@ -77,21 +77,7 @@ if __name__ == '__main__':
     # dilations = [None]
     if args.kernel_size == [1, 1, 1, 1]:
         dilations = [None]
-    # shifts7 = [-250, -225, -200, -175]
-    # shifts6 = [-150, -125, -100, -75]
-    # shifts2 = [-50, -25, 25, 0]
-    # shifts3 = [50, 75, 100, 125, 150]
-    # shifts4 = [175, 200, 225, 250]
-    # shifts8 = [150]
-    # shifts = shifts6 + shifts4 + shifts3 + shifts7 + shifts2
-    # shifts = [-500, -475, -450]
-    # shifts2 = [-425, -400, -375]
-    # shifts3 = [-350, -325, -300]
-    # shifts4 = [-275, 275, 300]
-    # shifts5 = [325, 350, 375]
-    # shifts6 = [400, 425, 450]
-    # shifts7 = [475, 500]
-    # shifts8 = [-1000]
+
     model_name = ''
     for dilation in dilations:
         best_valid_correlations = []
@@ -110,15 +96,17 @@ if __name__ == '__main__':
             Path(f'{home}/outputs/performances_{num_of_folds}/{model_string}_{model_name}/').mkdir(exist_ok=True, parents=True)
 
             df = pandas.DataFrame()
-        # kernel_size = [3, 3, 3, 3]
-        print(starting_patient_index)
+
+        print('starting with patient: ', starting_patient_index)
         # for s in shifts2:
         #     print('shifting by:', s)
         #     saved_model_dir = saved_model_dir + f'/shift_{s}/'
+        hp_model_name = f'hp_m_{variable}_{get_model_name_from_kernel_and_dilation(kernel_size, dilation)}'
+        print(hp_model_name, model_name)
         train_nets(model_string, [x for x in range(starting_patient_index, 13)], dilation, kernel_size,
                    lr=learning_rate,
                    num_of_folds=num_of_folds, trajectory_index=trajectory_index, low_pass=low_pass, shift=shift,
                    variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass=high_pass,
                    high_pass_valid=high_pass_valid, padding=add_padding, cropped=cropped,
                    low_pass_train=low_pass_training, shift_by=None, saved_model_dir=saved_model_dir, whiten=whiten,
-                   indices=indices, dummy_dataset=dummy_dataset)
+                   indices=indices, dummy_dataset=dummy_dataset, mimic_hp_predictions=True, hp_model_file=hp_model_name)

@@ -39,14 +39,15 @@ def plot_quadruple_plot(df: pandas.DataFrame, prefixes: list, variable: str, tit
     :param file_prefix: prefix under which the plot should be saved
     :return: None
     """
-    fig, ax = plt.subplots(2, 5, sharey='row', figsize=(len(titles) * 4 , (int(len(titles)*2)+6)),
-                           gridspec_kw={'width_ratios': [1, 1, 0.1, 1, 1]})
+    fig, ax = plt.subplots(1, 4, sharey='row', figsize=(len(titles) * 9, (int(len(titles))*4)),)
+                           # gridspec_kw={'width_ratios': [1, 1, 0.1, 1, 1]})
     # assert len(prefixes) == int(len(titles))
     # indices = [x for x in itertools.product([0,1], [x for x in range(int(len(titles)))])]
     # indices = [x for x in range(len(prefixes))]
-    letters = ['A', 'B', 'C', 'C', 'D', 'E', 'F', 'G', 'G', 'H']
+    letters = ['A', 'B', 'C', 'D', 'D', 'E', 'F', 'G', 'G', 'H']
     # letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-    indices = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4)]
+    # indices = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4)]
+    indices = [0, 1, 2, 3]
     columns = [x.replace('k_k', 'k') if 'k_k' in x else x for x in df.columns]
     chance_columns = [x.replace('k_k', 'k') if 'k_k' in x else x for x in chance_level.columns]
     columns = [x.replace('k1_d3', 'k1') if 'k1_d3' in x else x for x in columns]
@@ -54,10 +55,10 @@ def plot_quadruple_plot(df: pandas.DataFrame, prefixes: list, variable: str, tit
     df.columns = columns
     chance_level.columns = chance_columns
     for i in range(len(prefixes)):
-        if (i == 2) or (i == 7):
-            ax[indices[i]].set_visible(False)
-            continue
-        if (i == 0) or (i == 5):
+        # if (i == 3) or (i == 7):
+        #     ax[indices[i]].set_visible(False)
+        #     continue
+        if (i == 0):
             ax[indices[i]].set_ylabel('Correlation coefficient', size=30)
         sub_df = df[[column for column in df.columns if
                      (variable in column) and (column.startswith(prefixes[i])) and ('k4' not in column) and (
@@ -71,11 +72,16 @@ def plot_quadruple_plot(df: pandas.DataFrame, prefixes: list, variable: str, tit
             if (prefixes[i] == 'm_') or (prefixes[i] == 'sm_'):
                 chance_level_col = f'{prefixes[i]}{variable}_k3_d3'
                 chance_level_values = sub_df[chance_level_col]
-            elif (prefixes[i] == 'lp_m_') or (prefixes[i] == 'lp_sm_'):
+            elif (prefixes[i].startswith('lp_m_')) or (prefixes[i].startswith('lp_sm_')):
                 chance_level_col = '{}_{}'.format(prefixes[i].split('_')[1], col)
                 chance_level_values = df[chance_level_col]
             # if 'pw_' in prefixes[i]:
             #     chance_level_col = prefixes[i].replace('pw_', '')
+            elif 'lp_for' in prefixes[i]:
+                chance_level_col = f'full_for_hp_m_{col}'
+                chance_level_values = df[chance_level_col]
+            elif 'for' in prefixes[i]:
+                chance_level_col = None
             else:
                 if 'k3_d3' in col:
                     chance_level_col = f'shuffled_m_{variable}_k3_d3'
@@ -93,12 +99,12 @@ def plot_quadruple_plot(df: pandas.DataFrame, prefixes: list, variable: str, tit
             #         alternative = 'greater'
                 # if switch_back:
                 #     prefixes[i] = f'pw_{prefixes[i]}'
-            if ('h' in prefixes[i]) or (prefixes[i] == 'sm_') or (prefixes[i] == 'm_'):
+            if (('h' in prefixes[i]) or (prefixes[i] == 'sm_') or (prefixes[i] == 'm_')) and ('for' not in prefixes[i]):
                 alternative = 'greater'
             else:
                 alternative = 'less'
             # if 'pw_' not in prefixes[i]:
-            if ('k3_d3' in col) and ((prefixes[i] == 'm_') or (prefixes[i] == 'sm_')):
+            if (('k3_d3' in col) and ((prefixes[i] == 'm_') or (prefixes[i] == 'sm_'))) or (prefixes[i] == 'full_for_hp_m_'):
                 significance_string = ''
 
             else:
@@ -114,12 +120,12 @@ def plot_quadruple_plot(df: pandas.DataFrame, prefixes: list, variable: str, tit
         ax[indices[i]].axhline(0, color='k', linestyle='--')
         # ax[indices[i]].text(-0.2, 1.05, letters[i],
         #                     size=30, weight='bold')
-        if indices[i][0] == 0:
-            ax[indices[i]].text(-0.2, 1.0, letters[i],
+        # if indices[i][0] == 0:
+        ax[indices[i]].text(-0.2, 0.95, letters[i],
                                 size=30, weight='bold')
-        else:
-            ax[indices[i]].text(-0.2, 0.69, letters[i],
-                                size=30, weight='bold')
+        # else:
+        #     ax[indices[i]].text(-0.2, 0.69, letters[i],
+        #                         size=30, weight='bold')
         # ax[indices[i]].boxplot(sub_df, labels=col_names)
         sns.boxplot(data=sub_df, ax=ax[indices[i]])
         ax[indices[i]].set_title(titles[i % int(len(titles))], size=30, loc='center', pad=10)
@@ -141,7 +147,7 @@ def plot_quadruple_plot(df: pandas.DataFrame, prefixes: list, variable: str, tit
 
     # plt.ylabel('Correlation coefficient')
     plt.tight_layout()
-    plt.subplots_adjust(hspace=0.86)
+    # plt.subplots_adjust(hspace=0.86)
     plt.savefig(
         f'{home}/results/performances_5_results/graphs/{file_prefix}_{variable}_performance_comparison.pdf', dpi=200)
     plt.show()
@@ -199,15 +205,19 @@ def plot_one_file_results(file_df, file, variable):
 
 if __name__ == '__main__':
 
-    variable = 'absVel'
+    variable = 'vel'
     # prefixes = ['m_', 'pw_m_', 'lp_m_', 'pw_lp_m_', 'hp_m_', 'pw_hp_m_', 'hpv_m_', 'pw_hpv_m_']
-    prefixes = ['m_', 'sm_', 'lp_m_', 'lp_sm_', 'hp_m_', 'hp_sm_', 'hpv_m_', 'hpv_sm_']
-
-    prefixes2 = ['m_', 'lp_m_', 'hp_m_', 'hpv_m_', 'lpt_hpv_m_']
-    titles = ['Full training & validation', 'Full training & low-pass \nvalidation',
-              'High-pass training & validation \n15th order Butterworth',
-              'Full training & high-pass \n validation 15 order Butterworth',
-              'Low-pass training & high-pass \n validation 15 order Butterworth']
+    # prefixes = ['m_', 'sm_', 'lp_m_', 'lp_sm_', 'hp_m_', 'hp_sm_', 'hpv_m_', 'hpv_sm_']
+    prefixes = ['m_', 'lp_m_', 'hp_for_hp_m_', 'full_for_hp_m_']
+    # prefixes2 = ['m_', 'lp_m_', 'hp_m_', 'hpv_m_', 'lpt_hpv_m_']
+    # titles = ['Full training & validation', 'Full training & low-pass \nvalidation',
+    #           'High-pass training & validation \n15th order Butterworth',
+    #           'Full training & high-pass \n validation 15 order Butterworth',
+    #           'Low-pass training & high-pass \n validation 15 order Butterworth']
+    titles = ['Full training & validation',
+              'Low-pass training and validation',
+              'Low-pass training for hp prediction',
+              'Full training for hp prediction']
     titles2 = ['Full training & validation',
                'Whitened- full training & validation',
                '',
@@ -232,7 +242,7 @@ if __name__ == '__main__':
                ]
     big_df = get_5_fold_performance_df(variable, prefixes)
     chance_level_df = get_5_fold_performance_df(variable, prefixes=[f'shuffled_{prefix}' for prefix in prefixes if
-                                                                    (prefix != 'lp_m_') and (prefix != 'lp_sm_') and (not 'pw_' in prefix)])
+                                                                    (prefix != 'lp_m_') and (prefix != 'lp_sm_') and (not 'pw_' in prefix) and ('for' not in prefix)])
     # chance_level_df = pandas.read_csv(f'{home}/results/test_results/random_performances.csv', sep=';', index_col=0)
     # plot_quadruple_plot(big_df, ['m_', 'lp_m_', 'hp_m_', 'hpv_m_', 'lpt_hpv_m_'], 'vel', ['Full training & validation',
     #                                                                                       'Full training & low-pass validation\n15th order Butterworth',
@@ -242,11 +252,10 @@ if __name__ == '__main__':
     #                                                                                      ], chance_level_df)
 
     # prefixes = ['m_', 'pw_m_', '', 'lp_m_', 'pw_lp_m_', 'hp_m_', 'pw_hp_m_', '', 'hpv_m_', 'pw_hpv_m_']
-    prefixes = ['m_', 'sm_', '', 'lp_m_', 'lp_sm_', 'hp_m_', 'hp_sm_', '', 'hpv_m_', 'hpv_sm_']
+    # prefixes = ['m_', 'sm_', '', 'lp_m_', 'lp_sm_', 'hp_m_', 'hp_sm_', '', 'hpv_m_', 'hpv_sm_']
     # prefixes = [f'pw_{prefix}' if prefix != '' else '' for prefix in prefixes]
-    plot_quadruple_plot(big_df, prefixes, variable, titles_s, chance_level_df, 'original_vs_shifted')
+    plot_quadruple_plot(big_df, prefixes, variable, titles, chance_level_df, 'lp_preds_for_hp')
     """
-    
     files1 = [f'{home}/results/test_results/initial_performances.csv',
               f'{home}/results/test_results/hp_performances.csv',
               f'{home}/results/test_results/hp_valid_performances.csv',
@@ -258,8 +267,8 @@ if __name__ == '__main__':
               f'{home}/results/test_results/hp_shifted_performances.csv',
               f'{home}/results/test_results/hp_valid_shifted_performances.csv',
               f'{home}/results/test_results/lpt_hpv_strong_shifted_performances.csv']
-    # files = [f'{home}/results/initial_performance.csv', f'{home}/results/lp_performance.csv',
-    #          f'{home}/results/shifted2_performance.csv', f'{home}/results/lp_shifted_performance.csv']
+    files = [f'{home}/results/initial_performance.csv', f'{home}/results/lp_performance.csv',
+              f'{home}/results/shifted2_performance.csv', f'{home}/results/lp_shifted_performance.csv']
     big_df = get_big_df(files1)
     plot_quadruple_plot(big_df,
                         ['m_', 'lpv_m_', 'hp_m_', 'hpv_m_', 'hpv_lpt_strong_m_', 'sm_', 'lp_sm_', 'hp_sm_', 'hpv_sm_',

@@ -50,9 +50,10 @@ def add_padding(model, input_channels):
         if hasattr(module, "dilation") and hasattr(module, 'kernel_size') and ('spat' not in name):
             dilation = module.dilation
             kernel_size = module.kernel_size
-            right_padding = 0, 0, 0, (kernel_size[0] - 1) * dilation[0]
-            new_model.add_module(name=f'{name}_pad', module=nn.ZeroPad2d(padding=right_padding))
-
+            right_padding = 0, (kernel_size[0] - 1) * dilation[0]
+            # new_model.add_module(name=f'{name}_pad', module=nn.ZeroPad2d(padding=right_padding))
+            module.padding = 'same'
+            module.padding_mode = 'zeros'
             module.stride = (2, 1)
             new_model.add_module(name, module)
         else:
@@ -207,10 +208,10 @@ if __name__ == '__main__':
     model.make_regressor()
     print(model.model)
     model_2 = Model(85, n_classes=1, input_time_length=1000, final_conv_length=2, stride_before_pool=False)
-    print(model_2.model)
-    model_2.make_regressor()
-    print(model_2.model)
+    # print(model_2.model)
+    # model_2.make_regressor()
+    # print(model_2.model)
 
-    test_padding()
+    # test_padding()
     add_padding(model.model, 85)
     print('done')

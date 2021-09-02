@@ -20,7 +20,7 @@ def get_corr_coef(dataset, model):
             outs = model.double()(np_to_var(dataset.X))
 
 
-    all_y = np.array(dataset.y)
+    all_y = np.array(dataset.y.cpu())
     if cuda:
         preds1 = var_to_np(outs1)
         preds2 = var_to_np(outs2)

@@ -215,6 +215,8 @@ class Data:
         :param absVel_from_vel: says if we are predicting absolute velocity values as taking absolute values of
         velocity
         """
+        self.valid_hp_predictions = None
+        self.hp_predictions = None
         self.random_valid = random_valid
         self.absVel_from_vel = absVel_from_vel
         self.pre_whiten = pre_whiten
@@ -247,7 +249,7 @@ class Data:
                 self.test_set = self.low_pass_test
 
             if self.low_pass_training:
-                self.train_set = self.low_pass_test
+                self.train_set = self.low_pass_train
 
             if self.high_pass:
                 self.train_set, self.valid_set, self.test_set = self.high_pass_train, self.high_pass_valid, self.high_pass_test
@@ -495,7 +497,9 @@ class Data:
 
         validation_set = concatenate_batches(validation_set, iterator, False)
         train_set = concatenate_batches(train_set, iterator, False)
-
+        if self.hp_predictions is not None:
+            train_set.y = self.hp_predictions
+            validation_set.y = self.valid_hp_predictions
         self.fold_number += 1
         return train_set, validation_set
 
@@ -569,35 +573,47 @@ if __name__ == '__main__':
     #                      pre_whiten=True, high_pass=True, indices=indices['P_1'])
     #
     data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=0, low_pass_training=False,
-                valid_high_pass=False, shift_data=False, dummy_dataset=True)
+                valid_high_pass=False, shift_data=False, dummy_dataset=False)
 
-    shifted_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=1,
-                        shift_data=False, high_pass=False)
+    # shifted_data = Data('../previous_work/P1_data.mat', -1, low_pass=False, trajectory_index=1,
+    #                     shift_data=False, high_pass=False)
     data.cut_input(1200, 519, False)
-    shifted_data.cut_input(1200, 519, False)
+    # shifted_data.cut_input(1200, 519, False)
     # prev_trainset = data.train_set
     # motor_train_set = data.get_certain_channels(prev_trainset, True)
     # non_motor_train_set = data.get_certain_channels(prev_trainset, False)
     # print(motor_train_set.X.shape)
     # print(non_motor_train_set.X.shape)
-    fig, ax = plt.subplots(1, 2, sharey='row')
-    # ax[0].plot(np.arange(0, 1200), data.datasets.X[0][:1200, 0], label='shifted Xs')
-    ax[0].plot(np.arange(0, 1200), data.datasets.y[0][:1200])
-    ax[0].set_title('Velocity')
-    ax[0].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200] - np.abs(data.datasets.y[0][:1200]))
-    ax[0].set_xlabel('Time in samples')
-    ax[0].set_ylabel('Variable value')
+    fig, ax = plt.subplots(2, 1, sharex='col', figsize=(10, 5))
+    ax[0].plot(np.arange(0, 5000), data.datasets.X[0][:5000, 0], label='iEEG signal')
+    # ax[0].plot(np.arange(0, 5000), data.datasets.y[0][:5000], label='Velocity value')
+    ax[1].plot(np.arange(0, 5000), data.datasets.X[10][:5000, 0], label='iEEG signal')
+    ax[1].plot(np.arange(0, 5000), data.datasets.y[0][:5000], label='Velocity value')
+
+    ax[1].set_xlabel('Time in samples')
+    ax[0].set_ylabel('Electrode 1')
+    ax[1].set_ylabel('Electrode 2')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig('myplot.png', dpi=300)
+    plt.show()
+
+    # ax[0].plot(np.arange(0, 1200), data.datasets.y[0][:1200])
+    # ax[0].set_title('Velocity')
+    # ax[0].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200] - np.abs(data.datasets.y[0][:1200]))
+    # ax[0].set_xlabel('Time in samples')
+    # ax[0].set_ylabel('Variable value')
 
     # plt.legend()
     # ax[1].plot(np.arange(0, 1200), shifted_data.datasets.X[0][:1200, 0], label= 'shifted Xs')
-    ax[1].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200])
-    ax[1].set_title('Absolute velocity')
-    ax[1].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200] - np.abs(data.datasets.y[0][:1200]),
-               label='difference between \nabsolute velocity and\nabsolute value of velocity')
-    ax[1].set_xlabel('Time in samples')
+    # ax[1].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200])
+    # ax[1].set_title('Absolute velocity')
+    # ax[1].plot(np.arange(0, 1200), shifted_data.datasets.y[0][:1200] - np.abs(data.datasets.y[0][:1200]),
+    #            label='difference between \nabsolute velocity and\nabsolute value of velocity')
+    # ax[1].set_xlabel('Time in samples')
 
-    plt.legend()
-    plt.show()
+    # plt.legend()
+    # plt.show()
     # ax[1].set_title('Shifted middle - 100')
     # plt.legend()
     # ax[2].plot(np.arange(0, 1200), no_shift_data.datasets.X[0][:1200, 0], label='shifted Xs')

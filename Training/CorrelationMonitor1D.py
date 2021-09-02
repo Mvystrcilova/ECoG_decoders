@@ -26,7 +26,7 @@ class CorrelationMonitor1D(Callback):
     def monitor_batch(self, msg):
         print(msg)
 
-    ### from braindecode library 0.4.85
+    # from braindecode library 0.4.85
     def compute_preds_per_trial_from_n_preds_per_trial(self,
                                                        all_preds, n_preds_per_trial):
         """
@@ -72,7 +72,7 @@ class CorrelationMonitor1D(Callback):
         )
         return preds_per_trial
 
-    ### from braindecode library 0.4.85
+    # from braindecode library 0.4.85
     def compute_preds_per_trial_from_crops(self, all_preds, input_time_length, X):
         n_preds_per_input = all_preds[0].shape[2]
         n_receptive_field = input_time_length - n_preds_per_input + 1
@@ -96,8 +96,8 @@ class CorrelationMonitor1D(Callback):
         valid_corr = self.calculate_correlation(valid_preds, valid_y, valid_X)
         names = ['train_correlation', 'validation_correlation']
         if 'test' in kwargs.keys():
-        #     writer.add_scalar('test_correlation', train_corr, 0)
-        #     writer.flush()
+            #     writer.add_scalar('test_correlation', train_corr, 0)
+            #     writer.flush()
             print(f'test_correlation: {train_corr}')
         else:
             for name, value in zip(names, [train_corr, valid_corr]):
@@ -108,8 +108,8 @@ class CorrelationMonitor1D(Callback):
                 net.max_correlation = valid_corr
                 net.history.record('validation_correlation_best', True)
                 # if self.output_dir is not None:
-                    # torch.save(net.module,
-                    #            home + f'/models/saved_models/{self.output_dir}/best_model_split_{self.split}')
+                # torch.save(net.module,
+                #            home + f'/models/saved_models/{self.output_dir}/best_model_split_{self.split}')
                 self.validation_set = Dataset(valid_X, valid_y)
 
             else:
@@ -136,7 +136,7 @@ class CorrelationMonitor1D(Callback):
         if isinstance(preds_per_trial[0], np.ndarray):
             preds_per_trial = [p[0] for p in preds_per_trial]
         else:
-            preds_per_trial = [p.detach().numpy()[0] for p in preds_per_trial]
+            preds_per_trial = [p.cpu().detach().numpy()[0] for p in preds_per_trial]
         pred_timeseries = np.concatenate(preds_per_trial, axis=0)
         ys_2d = [y[:, None] for y in [targets]]
         targets_per_trial = self.compute_preds_per_trial_from_crops(ys_2d,
@@ -145,7 +145,7 @@ class CorrelationMonitor1D(Callback):
         if isinstance(targets_per_trial[0], np.ndarray):
             targets_per_trial = [t[0] for t in targets_per_trial]
         else:
-            targets_per_trial = [t.detach().numpy()[0] for t in targets_per_trial]
+            targets_per_trial = [t.cpu().detach().numpy()[0] for t in targets_per_trial]
         target_timeseries = np.concatenate(targets_per_trial, axis=0)
         corr = np.corrcoef(target_timeseries, pred_timeseries)[0, 1]
         return corr

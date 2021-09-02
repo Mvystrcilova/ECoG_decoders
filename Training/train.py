@@ -1,5 +1,5 @@
 from pathlib import Path
-import  matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import pandas
 import torch
 import numpy as np
@@ -12,10 +12,10 @@ from skorch.callbacks import TensorBoard, Checkpoint
 from Interpretation.interpretation import get_corr_coef
 from Training.CorrelationMonitor1D import CorrelationMonitor1D
 from data.OnePredictionData import OnePredictionData
+from data.gather_predictions import get_network_predictions
 from data.pre_processing import Data, get_num_of_channels
 from global_config import home, input_time_length, cuda, get_model_name_from_kernel_and_dilation
 from models.Model import load_model, change_network_kernel_and_dilation, Model, add_padding
-
 
 
 def test_input(input_channels, model):
@@ -56,9 +56,14 @@ def get_model(input_channels, input_time_length, dilations=None, kernel_sizes=No
 
 
 def train(data, dilation, kernel_size, lr, patient_index, model_string, correlation_monitor, output_dir,
-          max_train_epochs=300, split=None, cropped=True, padding=False):
+          max_train_epochs=300, split=None, cropped=True, padding=False,
+          mimic_hp_predictions=False, hp_model=None, hp_data=None):
     """
     Creates and fits a model with the specified parameters onto the specified data
+    :param hp_data: data for the hp_model, hp prefix stands for high-passed but in theory could be any data
+    :param hp_model: model whose outputs will be predicted by the other model if mimic_hp_predictions is set to True
+    :param mimic_hp_predictions: if True, it expects hp_model and hp_data not to be none and tries to predict the output
+    of the model specified in hp_model rather than the actual data
     :param data: dataset on which the model is to be trained
     :param dilation: dilation parameters of the model max-pool layers
     :param kernel_size: kernel sizes of the model's max-pool layers
@@ -73,6 +78,10 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
     :param padding: if padding should be added, always False in thesis experiments
     :return:
     """
+
+    if mimic_hp_predictions:
+        assert hp_model is not None
+        assert hp_data is not None
     model, changed_model, model_name = get_model(data.in_channels, input_time_length, dilations=dilation,
                                                  kernel_sizes=kernel_size, padding=padding)
     if cuda:
@@ -90,12 +99,17 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
         home + f'/models/saved_models/{output_dir}/').mkdir(
         parents=True,
         exist_ok=True)
+
     # cutting the input into batches compatible with model
     # if data.num_of_folds != -1, then also pre-whitening or filtering takes place
     # as part of the cut_input method
     data.cut_input(input_time_length=input_time_length, n_preds_per_input=n_preds_per_input, shuffle=False)
-
-
+    print('original data fold number:', {data.fold_number})
+    if mimic_hp_predictions:
+        hp_predictions, hp_valid_predictions = get_network_predictions(hp_model, hp_data,
+                                                                       input_channels=model.input_channels)
+        data.hp_predictions = hp_predictions
+        data.valid_hp_predictions = hp_valid_predictions
     print(f'starting cv epoch {split} out of {data.num_of_folds} for model: {model_string}_{model_name}')
     correlation_monitor.step_number = 0
     if split is not None:
@@ -141,7 +155,7 @@ def train(data, dilation, kernel_size, lr, patient_index, model_string, correlat
 def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_folds, trajectory_index, low_pass,
                shift, variable, result_df, max_train_epochs, high_pass=False, high_pass_valid=False,
                padding=False, cropped=True, low_pass_train=False, shift_by=None, saved_model_dir=f'lr_0.001',
-               whiten=False, indices=None, dummy_dataset=False):
+               whiten=False, indices=None, dummy_dataset=False, mimic_hp_predictions=False, hp_model_file=None):
     """
     Performs num_of_folds cross-validation on each of the patients
     :param model_string: specifies the setting in which the model was trained
@@ -168,7 +182,8 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
 
     :return: None, only saves the learning statistics
     """
-
+    hp_data = None
+    hp_model = None
     best_valid_correlations = []
     # valid_indices = {}
     # train_indices = {}
@@ -199,7 +214,7 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
             if shift_by is None:
                 shift_index = int(small_window / 2)
             else:
-                shift_index = int((small_window/2) - shift_by)
+                shift_index = int((small_window / 2) - shift_by)
                 print('shift_index:', shift_index)
             print('dummy dataset', dummy_dataset)
             data = Data(data_file, num_of_folds=num_of_folds,
@@ -208,6 +223,18 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
                         shift_by=int(shift_index),
                         valid_high_pass=high_pass_valid, low_pass_training=low_pass_train, pre_whiten=whiten,
                         indices=curr_patient_indices, dummy_dataset=dummy_dataset)
+            if mimic_hp_predictions:
+                hp_model = f'/models/saved_models/lr_{lr}/{hp_model_file}/{hp_model_file}_p_{patient_index}/last_model'
+                hp_model = load_model(hp_model)
+                hp_model.eval()
+                hp_data = Data(data_file, num_of_folds=num_of_folds,
+                               low_pass=False,
+                               trajectory_index=trajectory_index, shift_data=shift, high_pass=True,
+                               shift_by=int(shift_index),
+                               valid_high_pass=False, low_pass_training=False, pre_whiten=whiten,
+                               indices=curr_patient_indices, dummy_dataset=dummy_dataset)
+            else:
+                hp_data = None
         # valid_indices[f'P{patient_index}'] = data.valid_indices
         # train_indices[f'P{patient_index}'] = data.train_indices
         output_dir = f'{saved_model_dir}/{model_string}_{model_name}/{model_string}_{model_name}_p_{patient_index}'
@@ -234,7 +261,9 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
                     exist_ok=True)
                 result_df[f'{model_string}_{model_name}'] = best_valid_correlations
                 best_valid_correlations = []
-                result_df.to_csv(f'{home}/outputs/{saved_model_dir}/{model_string}_{model_name}/{model_string}_{model_name}/results.csv', sep=';')
+                result_df.to_csv(
+                    f'{home}/outputs/{saved_model_dir}/{model_string}_{model_name}/{model_string}_{model_name}/results.csv',
+                    sep=';')
 
         else:
             fold_corrs = []
@@ -242,11 +271,15 @@ def train_nets(model_string, patient_indices, dilation, kernel_size, lr, num_of_
                 # data.num_of_folds cross-validation
                 best_corr = train(data, dilation, kernel_size, lr, patient_index, model_string,
                                   correlation_monitor, output_dir, split=i,
-                                  max_train_epochs=max_train_epochs, cropped=cropped)
+                                  max_train_epochs=max_train_epochs, cropped=cropped,
+                                  mimic_hp_predictions=mimic_hp_predictions,
+                                  hp_data=hp_data, hp_model=hp_model)
                 fold_corrs.append(best_corr)
             best_valid_correlations.append(fold_corrs)
             print('whole_patient:', patient_index, fold_corrs)
             patient_df = pandas.DataFrame()
             patient_df[f'P_{patient_index}'] = fold_corrs
             result_df = pandas.concat([result_df, patient_df], axis=1)
-            result_df.to_csv(f'{home}/outputs/performances_{data.num_of_folds}/{model_string}_{model_name}/performances.csv', sep=';')
+            result_df.to_csv(
+                f'{home}/outputs/performances_{data.num_of_folds}/{model_string}_{model_name}/performances.csv',
+                sep=';')

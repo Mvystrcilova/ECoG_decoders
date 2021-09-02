@@ -124,7 +124,7 @@ if __name__ == '__main__':
         print(prefixes[i])
         sub_df = df[[column for column in df.columns if
                     (column.startswith(prefixes[i])) and ('k4' not in column) and (
-                             'sbp1' not in column)]]
+                             'sbp1' not in column) and ((len(column) - len(prefixes[i])) < 14)]]
         col_names = []
         for col in sub_df.columns:
             values = sub_df[col].tolist()

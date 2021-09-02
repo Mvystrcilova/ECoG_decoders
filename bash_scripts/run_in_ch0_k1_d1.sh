@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=volta-lp
 #SBATCH --gpus=1
-#SBATCH --mem=64G
+#SBATCH --mem=72G
 #SBATCH --time=1-00
 
 

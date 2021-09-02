@@ -6,6 +6,8 @@ logs
 *.png
 .idea
 previous_work
+*.DS_Score
+*__pychache__/
 models/double_models/*
 models/maxpool_models/*
 models/saved_models/*
@@ -16,6 +18,9 @@ outputs/graphs
 outputs/hp_graphs
 outputs/max_pool_graphs
 outputs/shifted_graphs
+outputs/performan*
+outputs/shift_gradients
+python3.8
 *.npy
 outputs/all_layer_gradients
 outputs/all_layer_grads
