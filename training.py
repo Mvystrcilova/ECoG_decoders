@@ -24,7 +24,8 @@ parser.add_argument("--dilations", default=[1, 3, 9, 27], type=int, nargs=4, hel
 parser.add_argument("--starting_patient_index", default=1, type=int, help="Learning rate.")
 parser.add_argument('--variable', default=0, type=int)
 parser.add_argument('--dummy_dataset', default=False, type=bool, help='Training the network on a dummy dataset')
-
+parser.add_argument('--shift', default=False, type=bool)
+parser.add_argument('--model_string', default='m_', type=str)
 
 if __name__ == '__main__':
     """

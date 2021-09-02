@@ -25,8 +25,8 @@ def get_num_of_channels(mat_file, dummy_dataset=False):
     if dummy_dataset:
         return 85
     data = read_mat_file(mat_file)
-    session = data.D[0]
-    return session[0].ieeg.shape[1]
+    session = data['D'][0]
+    return session[0]['ieeg'].shape[1]
 
 
 def band_pass_data(Xs, ys, order=3, cut_off_frequency=40, btype='low'):
@@ -273,19 +273,19 @@ class Data:
         :return:
         """
         if not self.dummy_dataset:
-            sessions = self.data.D
+            sessions = self.data['D']
             if self.shift_data:
-                Xs = [session[0].ieeg[self.shift_by:] for session in sessions]
-                ys = [session[0].traj[:-self.shift_by, trajectory_index] for session in sessions]
+                Xs = [session[0]['ieeg'][self.shift_by:] for session in sessions]
+                ys = [session[0]['traj'][:-self.shift_by, trajectory_index] for session in sessions]
             else:
-                Xs = [session[0].ieeg[:] for session in sessions]
-                ys = [session[0].traj[:, trajectory_index] for session in sessions]
+                Xs = [session[0]['ieeg'][:] for session in sessions]
+                ys = [session[0]['traj'][:, trajectory_index] for session in sessions]
             # if self.absVel_from_vel:
             #     ys = np.abs(ys)
             print(len(Xs), len(ys))
 
-            self.motor_channels = self.data.H.selCh_D_MTR - 1
-            self.non_motor_channels = self.data.H.selCh_D_CTR - 1
+            self.motor_channels = self.data['H']['selCh_D_MTR'] - 1
+            self.non_motor_channels = self.data['H']['selCh_D_CTR'] - 1
 
             if self.num_of_folds == 0:
                 self.num_of_folds = len(Xs)
