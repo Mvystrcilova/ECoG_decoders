@@ -31,6 +31,7 @@ parser.add_argument('--high_pass_valid', default=False, type=bool)
 parser.add_argument('--low_pass_train', default=False, type=bool)
 parser.add_argument('--low_pass_both', default=False, type=bool)
 parser.add_argument('--lr', default=0.001, type=float)
+parser.add_argument('--mimic_hp_predictions', default=False, type=bool)
 
 
 if __name__ == '__main__':
@@ -116,4 +117,4 @@ if __name__ == '__main__':
                    variable=variable, result_df=df, max_train_epochs=max_train_epochs, high_pass=high_pass,
                    high_pass_valid=high_pass_valid, padding=add_padding, cropped=cropped,
                    low_pass_train=low_pass_training, shift_by=None, saved_model_dir=saved_model_dir, whiten=whiten,
-                   indices=indices, dummy_dataset=dummy_dataset, mimic_hp_predictions=True, hp_model_file=hp_model_name)
+                   indices=indices, dummy_dataset=dummy_dataset, mimic_hp_predictions=args.mimic_hp_predictions, hp_model_file=hp_model_name)
