@@ -26,6 +26,12 @@ parser.add_argument('--variable', default=0, type=int)
 parser.add_argument('--dummy_dataset', default=False, type=bool, help='Training the network on a dummy dataset')
 parser.add_argument('--shift', default=False, type=bool)
 parser.add_argument('--model_string', default='m_', type=str)
+parser.add_argument('--high_pass_train', default=False, type=bool)
+parser.add_argument('--high_pass_valid', default=False, type=bool)
+parser.add_argument('--low_pass_train', default=False, type=bool)
+parser.add_argument('--low_pass_both', default=False, type=bool)
+parser.add_argument('--lr', default=0.001, type=float)
+
 
 if __name__ == '__main__':
     """
@@ -45,13 +51,13 @@ if __name__ == '__main__':
         with open(f'{home}/data/train_dict_{num_of_folds}', 'rb') as file:
             indices = pickle.load(file)
     trajectory_index = args.variable
-    learning_rate = 0.001
-    low_pass = False
-    shift = False
-    high_pass = True
-    high_pass_valid = True
+    learning_rate = args.lr
+    low_pass = args.low_pass_both
+    shift = args.shift
+    high_pass = args.high_pass_train
+    high_pass_valid = args.high_pass_valid
     add_padding = False
-    low_pass_training = False
+    low_pass_training = args.low_pass_train
     whiten = False
     if num_of_folds != -1:
         saved_model_dir = f'lr_{learning_rate}_{num_of_folds}'
@@ -67,10 +73,10 @@ if __name__ == '__main__':
         dummy_string = ''
 
     if trajectory_index == 0:
-        model_string = f'{dummy_string}hp_for_hp_m_{vel_string}'
+        model_string = f'{dummy_string}{args.model_string}{vel_string}'
         variable = vel_string
     else:
-        model_string = f'{dummy_string}hp_for_hp_m_{absVel_string}'
+        model_string = f'{dummy_string}{args.model_string}{absVel_string}'
         variable = absVel_string
 
     best_valid_correlations = []
